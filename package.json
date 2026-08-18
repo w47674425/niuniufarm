@@ -1,0 +1,15 @@
+{
+  "name": "niuniu-farm",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "牛牛农场 - 拖拽合成经营小游戏（Vite + 原生 ES Module）",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}

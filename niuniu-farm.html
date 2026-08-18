@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html data-page-node-id="RzgpUO1O3lFg9gURskAcbv" lang="zh-CN">
+<head data-page-node-id="rpmS1gcqZ55kypiEnbu0Tg">
+<script data-page-node-id="jGvGdsdrAOd84RmfAWfv5e" src="/page/page_comm/inject.js"></script>
+<meta data-page-node-id="hflCYq979iRZTFlstz95JZ" charset="UTF-8">
+<meta data-page-node-id="hc7yz55rgSiaZTqrqRcXDW" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+<title data-page-node-id="Tb5IL6bpBqZA4y1RHUejeD" data-pnid-children="hFWOVmkG2zEUk8HJH5gQyB">牛牛农场</title>
+<style data-page-node-id="3vhuOiWGItDv9WbK2BvC03" data-pnid-children="4JThKDLEwbffXSWVM0q71q">
+  :root{
+    --green-1:#bff0a8;
+    --green-2:#8fd97a;
+    --green-3:#6fc95a;
+    --card-bg:#fffdf6;
+    --card-border:#d9c89a;
+    --ink:#3a4a2f;
+    --gold:#f2b705;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+    background:linear-gradient(180deg,var(--green-1),var(--green-2) 55%,var(--green-3));
+    color:var(--ink);
+    display:flex;justify-content:center;align-items:stretch;
+    overflow:hidden;
+  }
+  #app{
+    position:relative;width:100%;max-width:480px;height:100%;
+    display:flex;flex-direction:column;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(255,255,255,.35) 0 8%, transparent 9%),
+      radial-gradient(circle at 70% 12%, rgba(255,255,255,.30) 0 6%, transparent 7%),
+      linear-gradient(180deg,var(--green-1),var(--green-2) 60%,var(--green-3));
+    box-shadow:0 0 30px rgba(0,0,0,.15) inset;
+    overflow:hidden;
+  }
+  #topbar{
+    flex:0 0 auto;display:flex;align-items:center;gap:8px;
+    padding:8px 10px;background:rgba(255,255,255,.55);
+    backdrop-filter:blur(4px);border-bottom:2px solid rgba(255,255,255,.6);
+    flex-wrap:wrap;
+  }
+  .stat{display:flex;align-items:center;gap:4px;font-weight:700;font-size:14px;
+    background:#fff;padding:4px 8px;border-radius:12px;border:1px solid var(--card-border);}
+  #dayStat{font-size:15px;}
+  #timer{font-variant-numeric:tabular-nums;color:#c0392b;}
+  .iconbtn{cursor:pointer;border:none;background:#fff;border:1px solid var(--card-border);
+    border-radius:12px;padding:4px 8px;font-size:14px;font-weight:700;color:var(--ink);}
+  .iconbtn:active{transform:scale(.95);}
+  #helpBtn{margin-left:auto;}
+  #packRow{flex:0 0 auto;display:flex;gap:6px;padding:8px 8px 4px;overflow-x:auto;}
+  .pack{
+    flex:0 0 auto;min-width:84px;background:linear-gradient(180deg,#fff,#fff3cf);
+    border:2px solid var(--gold);border-radius:14px;padding:8px 6px;text-align:center;
+    cursor:pointer;box-shadow:0 3px 0 #e0a800;user-select:none;
+  }
+  .pack:active{transform:translateY(2px);box-shadow:0 1px 0 #e0a800;}
+  .pack .pemoji{font-size:22px;}
+  .pack .pname{font-size:12px;font-weight:700;line-height:1.1;margin-top:2px;}
+  .pack .pprice{font-size:12px;color:#c0392b;font-weight:700;margin-top:3px;}
+  .packobj{position:absolute;width:84px;height:104px;border-radius:16px;
+    background:linear-gradient(180deg,#fff,#fff3cf);border:2px solid var(--gold);
+    box-shadow:0 4px 10px rgba(0,0,0,.2);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;cursor:pointer;user-select:none;text-align:center;z-index:6;}
+  .packobj:active{transform:translateY(2px);}
+  .packobj .pe{font-size:34px;}
+  .packobj .pn{font-size:12px;font-weight:800;margin-top:4px;}
+  #board{
+    position:relative;flex:1 1 auto;margin:6px;border-radius:18px;
+    border:3px dashed rgba(255,255,255,.6);overflow:hidden;
+    background:
+      radial-gradient(circle at 15% 85%, rgba(120,200,90,.25) 0 14%, transparent 15%),
+      radial-gradient(circle at 80% 70%, rgba(120,200,90,.22) 0 12%, transparent 13%);
+    touch-action:none;
+  }
+  .card{
+    position:absolute;width:74px;height:94px;border-radius:14px;
+    background:var(--card-bg);border:2px solid var(--card-border);
+    box-shadow:0 4px 8px rgba(0,0,0,.18);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    cursor:grab;user-select:none;text-align:center;padding:4px;
+    transition:box-shadow .1s;
+  }
+  .card.dragging{cursor:grabbing;box-shadow:0 8px 16px rgba(0,0,0,.30);z-index:900!important;}
+  .card:active{cursor:grabbing;}
+  .card .ce{font-size:30px;line-height:1;}
+  .card .cn{font-size:12px;font-weight:700;margin-top:4px;line-height:1.1;}
+  .card .cb{font-size:10px;color:#8a7a4a;margin-top:2px;line-height:1;}
+  .card.bankcard{border-color:#2e86de;background:linear-gradient(180deg,#eaf4ff,#fff);}
+  .card.cattle{border-color:#e08e2b;background:linear-gradient(180deg,#fff7ea,#fff);}
+  .moneybadge{position:absolute;top:-8px;right:-8px;background:var(--gold);color:#fff;
+    font-size:11px;font-weight:800;border-radius:10px;padding:1px 6px;border:1px solid #c98f00;}
+  .eating{position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+    background:#e08e2b;color:#fff;font-size:10px;font-weight:800;border-radius:8px;padding:1px 5px;z-index:910;}
+  #market{
+    position:absolute;left:50%;bottom:8px;transform:translateX(-50%);
+    background:rgba(255,255,255,.9);border:2px solid #c98f00;border-radius:16px;
+    padding:8px 16px;font-weight:800;font-size:14px;pointer-events:none;
+    display:flex;align-items:center;gap:6px;box-shadow:0 3px 8px rgba(0,0,0,.15);z-index:5;
+  }
+  #market.hot{background:#ffe9a8;}
+  #toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);
+    background:rgba(0,0,0,.78);color:#fff;padding:8px 14px;border-radius:14px;
+    font-size:13px;font-weight:700;opacity:0;transition:opacity .25s;pointer-events:none;z-index:1500;}
+  #toast.show{opacity:1;}
+  .progress{position:absolute;z-index:1000;background:rgba(0,0,0,.62);border-radius:10px;
+    padding:5px 7px;width:128px;}
+  .progress .pt{color:#fff;font-size:11px;font-weight:800;margin-bottom:3px;}
+  .progress .ptrack{height:9px;background:#fff;border-radius:6px;overflow:hidden;}
+  .progress .pbar{height:100%;width:0;background:var(--green-3);}
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;
+    align-items:center;justify-content:center;z-index:2000;padding:18px;}
+  .modal{background:#fff;border-radius:18px;max-width:420px;width:100%;max-height:86%;
+    overflow:auto;padding:18px;box-shadow:0 12px 30px rgba(0,0,0,.3);}
+  .modal h2{margin:0 0 10px;font-size:19px;}
+  .modal p,.modal li{font-size:13.5px;line-height:1.6;}
+  .modal .close{margin-top:12px;display:inline-block;background:var(--green-3);color:#fff;
+    border:none;border-radius:12px;padding:8px 16px;font-weight:800;cursor:pointer;font-size:14px;}
+  .adbox{text-align:center;}
+  .adbox .spinner{margin:18px auto;width:46px;height:46px;border:5px solid #eee;
+    border-top-color:var(--green-3);border-radius:50%;animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
+  .row .btn{flex:1;min-width:120px;background:var(--green-3);color:#fff;border:none;
+    border-radius:12px;padding:10px;font-weight:800;font-size:14px;cursor:pointer;}
+  .row .btn.alt{background:#888;}
+</style>
+</head>
+<body data-page-node-id="8u3iEXPPx1mYqdDCbHbWVn">
+<div data-page-node-id="DuaChxeJO3m8uMt65OJNLQ" id="app">
+  <div data-page-node-id="BgyO4WXvZf80JnLHJ7ikv9" id="topbar">
+    <div data-page-node-id="Tf2w5Tt4XcUCWey3UhGXHm" class="stat" id="dayStat"><!--pnid:HiENWqz3axJev6RTyFZ8Qv-->第 1 天</div>
+    <div data-page-node-id="oEel04FUbBWwVgyXomTwIp" class="stat" id="timer"><!--pnid:6fhTCxdHCeWwx8UMTi0TaG-->02:00</div>
+    <button data-page-node-id="iWIbYUXMgly4x02JRWMbg8" class="iconbtn" id="pauseBtn"><!--pnid:o74INEsoEuNvC74oILcEUi-->⏸ 暂停</button>
+    <div data-page-node-id="Iwa1EBmaYd4E7OOaofiUpG" class="stat" id="cashStat"><!--pnid:rDhJF6Du4iJMIS3y5zcHOj-->💰 ¥0</div>
+    <div data-page-node-id="BYwnHzaoOR3BKdFXevfF6n" class="stat" id="bankStat"><!--pnid:zx3GRMCfLqnjHYLKHASOvy-->🏦 ¥0</div>
+    <button data-page-node-id="ZnBa5DG6zv1Rx35ucf4CiL" class="iconbtn" id="helpBtn"><!--pnid:nr1AiZK0JVxPkfhhNyOX2E-->❔ 帮助</button>
+  </div>
+  <div data-page-node-id="4BnfRwgcjAzLysP4jQm5UP" id="packRow"></div>
+  <div data-page-node-id="WQv960Cjg2rjtmmejwJGR7" id="board">
+    <div data-page-node-id="pO1FXfsLUxPsJEgqkAJHlX" id="market"><!--pnid:iTeP8ImzckpkWKmwNmT5ka-->🏪 市场（把牛拖到这里出售）</div>
+    <div data-page-node-id="krNgGeKOTTtLm5axjaWBye" id="toast"></div>
+  </div>
+</div>
+
+<script data-page-node-id="IUxsKYdagRh3sEQCNHqQTa" data-pnid-children="kKE7KyC6BGlyFbvwjIcZbW">
+(function(){
+  "use strict";
+
+  // ================= 配置 =================
+  var DAY_LEN = 120;        // 每 2 分钟 = 1 天
+  var CARD_W = 74, CARD_H = 94;
+  var STACK_OFF = 24;       // 同一堆卡片竖向摞放间距
+  var PRODUCE_SEC = 2;      // 员工产出进度条秒数
+  var EAT_SEC = 1;          // 每棵草料咀嚼秒数
+
+  var META = {
+    employee:   {emoji:"👷", label:"员工",  note:"每天结束自动吃汉堡"},
+    burger:     {emoji:"🍔", label:"汉堡",  note:"员工的食物"},
+    grass_pile: {emoji:"🌾", label:"草堆",  note:"员工→3草料"},
+    grass:      {emoji:"🍃", label:"草料",  note:"喂牛"},
+    stump:      {emoji:"🪵", label:"树桩",  note:"员工→3木头"},
+    wood:       {emoji:"🪵", label:"木头",  note:"4+员工→围栏"},
+    fence:      {emoji:"🚧", label:"围栏",  note:"牛可叠上做牧场；员工→银行卡"},
+    bank:       {emoji:"💳", label:"银行卡",note:"存钱", bank:true},
+    money:      {emoji:"🪙", label:"钱币",  note:"¥", money:true},
+    calf:       {emoji:"🐮", label:"牛犊",  note:"售价¥5", cattle:true, sale:5},
+    juvenile:   {emoji:"🐮", label:"少年牛",note:"售价¥10",cattle:true, sale:10},
+    young:      {emoji:"🐮", label:"青年牛",note:"售价¥20",cattle:true, sale:20},
+    prime:      {emoji:"🐮", label:"壮年牛",note:"售价¥30",cattle:true, sale:30},
+    middle:     {emoji:"🐮", label:"中年牛",note:"售价¥20",cattle:true, sale:20},
+    old:        {emoji:"🐮", label:"老年牛",note:"售价¥10",cattle:true, sale:10}
+  };
+  var CATTLE = ["calf","juvenile","young","prime","middle","old"]; // 成长顺序
+  var FEEDABLE = ["calf","juvenile","young","prime","middle"];     // 还能被喂的牛
+  var PACKS = [
+    {id:"hire",  name:"招聘卡包", emoji:"📋", price:5, items:[["employee",1]]},
+    {id:"cow",   name:"牛牛卡包", emoji:"🐮", price:5, items:[["calf",1]]},
+    {id:"build", name:"建筑卡包", emoji:"🏗️", price:5, items:[["stump",2]]},
+    {id:"food",  name:"食物卡包", emoji:"🍔", price:5, items:[["burger",3]]},
+    {id:"grass", name:"草堆卡包", emoji:"🌾", price:5, items:[["grass_pile",2]]}
+  ];
+
+  // ================= 状态 =================
+  var piles = [];          // [{id, x, y, cards:[cardObj,...]}]
+  var nextId = 1;
+  var day = 1, timeLeft = DAY_LEN, paused = false, gameOver = false, busy = false;
+  var bankDeposit = 0;
+  var drag = null;
+  var board = document.getElementById("board");
+  var marketEl = document.getElementById("market");
+  var toastEl = document.getElementById("toast");
+  var toastTimer = null;
+
+  function $(id){ return document.getElementById(id); }
+  function rand(a,b){ return a + Math.random()*(b-a); }
+  function clamp(v,min,max){ return v<min?min:(v>max?max:v); }
+  function boardSize(){ return {w:board.clientWidth, h:board.clientHeight}; }
+  function newId(){ return nextId++; }
+  function mk(type, value){ var c={id:newId(), type:type, fedToday:0}; if(value!=null) c.value=value; return c; }
+  function makePile(x,y,cards){ var p={id:newId(), x:x, y:y, cards:cards||[]}; piles.push(p); return p; }
+  function removePile(p){ var i=piles.indexOf(p); if(i>=0) piles.splice(i,1); }
+  function pileOf(card){ for(var i=0;i<piles.length;i++){ if(piles[i].cards.indexOf(card)>=0) return piles[i]; } return null; }
+  function allCards(){ var r=[]; piles.forEach(function(p){ p.cards.forEach(function(c){r.push(c);}); }); return r; }
+  function countMoneyOnBoard(){ var n=0; allCards().forEach(function(c){ if(c.type==="money") n+= (c.value||1); }); return n; }
+  function removeCardObj(c){ var p=pileOf(c); if(p){ p.cards=p.cards.filter(function(x){return x!==c;}); if(p.cards.length===0) removePile(p); } }
+
+  function toast(msg){
+    toastEl.textContent = msg; toastEl.classList.add("show");
+    if(toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 1900);
+  }
+
+  function scatter(cardsArr){
+    var s = boardSize();
+    cardsArr.forEach(function(c){
+      var x = rand(8, Math.max(20, s.w-CARD_W-8));
+      var y = rand(8, Math.max(20, s.h-CARD_H-64));
+      makePile(x, y, [c]);
+    });
+  }
+
+  // ================= 合并规则（带方向） =================
+  // 员工必须拖到资源卡上才产出；牛必须拖到草料上才吃草。反向不行。
+  function comboInfo(moving, target){
+    var m = moving.map(function(c){return c.type;});
+    var t = target.map(function(c){return c.type;});
+    var mHas=function(x){return m.indexOf(x)>=0;}, tHas=function(x){return t.indexOf(x)>=0;};
+    var mCnt=function(x){return m.filter(function(y){return y===x;}).length;};
+    var tCnt=function(x){return t.filter(function(y){return y===x;}).length;};
+    // 产出：员工(移动方) + 资源(目标方)
+    if(mHas("employee")&&tHas("grass_pile")) return {kind:"produce", combo:"grass", ok:true};
+    if(tHas("employee")&&mHas("grass_pile")) return {kind:"produce", combo:"grass", ok:false};
+    if(mHas("employee")&&tHas("stump"))      return {kind:"produce", combo:"wood",  ok:true};
+    if(tHas("employee")&&mHas("stump"))      return {kind:"produce", combo:"wood",  ok:false};
+    if(mHas("employee")&&tCnt("wood")>=4)    return {kind:"produce", combo:"fence", ok:true};
+    if(tHas("employee")&&mCnt("wood")>=4)    return {kind:"produce", combo:"fence", ok:false};
+    if(mHas("employee")&&tHas("fence"))      return {kind:"produce", combo:"bank",  ok:true};
+    if(tHas("employee")&&mHas("fence"))      return {kind:"produce", combo:"bank",  ok:false};
+    // 吃草：草料(移动方) 拖到 牛(目标方)；反向不行
+    var cowMover  = moving.some(function(c){return META[c.type]&&META[c.type].cattle;});
+    var cowTarget = target.some(function(c){return META[c.type]&&META[c.type].cattle;});
+    var grassMover  = moving.some(function(c){return c.type==="grass";});
+    var grassTarget = target.some(function(c){return c.type==="grass";});
+    if(grassMover && cowTarget){
+      // 目标是牧场(围栏+牛)时，草料只叠进牧场、不立即吃（由每日自动喂食处理）
+      if(target.some(function(c){return c.type==="fence";})) return {kind:"pasture", ok:true};
+      return {kind:"feed", ok:true};
+    }
+    if(grassTarget && cowMover) return {kind:"feed", ok:false};
+    return null;
+  }
+  function checkMerge(moving, target){
+    var info = comboInfo(moving, target);
+    if(info){
+      if(!info.ok) return {ok:false, reverse:true};
+      return {ok:true, info:info};
+    }
+    var combined = moving.concat(target);
+    if(combined.length===0) return {ok:false};
+    var t0 = combined[0].type;
+    if(combined.every(function(c){return c.type===t0;})) return {ok:true, info:{kind:"same"}};
+    // 牧场：围栏 + 牛（结构性组合，持久存在）
+    var hasFence  = combined.some(function(c){return c.type==="fence";});
+    var hasCattle = combined.some(function(c){return META[c.type]&&META[c.type].cattle;});
+    if(hasFence && hasCattle) return {ok:true, info:{kind:"pasture"}};
+    var types = combined.map(function(c){return c.type;});
+    if(types.indexOf("burger")>=0 && types.indexOf("employee")>=0) return {ok:true, info:{kind:"burger"}};
+    if(types.indexOf("money")>=0 && types.indexOf("bank")>=0) return {ok:true, info:{kind:"bank"}};
+    return {ok:false};
+  }
+
+  function isCattle(type){ return META[type] && META[type].cattle; }
+
+  // ================= 产出（一次性，消耗非员工卡） =================
+  function doProduce(combo, pile){
+    if(combo==="grass"){
+      pile.cards = pile.cards.filter(function(c){return c.type!=="grass_pile";});
+      spawnNear(pile, [mk("grass"),mk("grass"),mk("grass")]);
+      toast("🌾+员工 → 产出 3 草料（草堆已用完）");
+    } else if(combo==="wood"){
+      pile.cards = pile.cards.filter(function(c){return c.type!=="stump";});
+      spawnNear(pile, [mk("wood"),mk("wood"),mk("wood")]);
+      toast("🪵+员工 → 产出 3 木头（树桩已用完）");
+    } else if(combo==="fence"){
+      var removed=0;
+      pile.cards = pile.cards.filter(function(c){ if(c.type==="wood" && removed<4){removed++; return false;} return true; });
+      spawnNear(pile, [mk("fence")]);
+      toast("4🪵+员工 → 产出 1 围栏（木头已用完）");
+    } else if(combo==="bank"){
+      var fi = pile.cards.findIndex(function(c){return c.type==="fence";});
+      if(fi>=0) pile.cards.splice(fi,1);            // 仅消耗 1 张围栏，其余围栏与员工保留
+      spawnNear(pile, [mk("bank")]);
+      toast("🚧+员工 → 产出 1 银行卡（仅消耗1张围栏）");
+    }
+    if(pile.cards.length===0) removePile(pile);
+  }
+  function spawnNear(pile, cardsArr){
+    var x = clamp(pile.x+34, 6, boardSize().w-CARD_W-6);
+    var y = clamp(pile.y+34, 6, boardSize().h-CARD_H-60);
+    makePile(x, y, cardsArr);
+  }
+
+  // ================= 进度条 =================
+  function showProgress(x, y, seconds, label, onDone){
+    var el = document.createElement("div");
+    el.className = "progress";
+    el.innerHTML = '<div class="pt">'+label+'</div><div class="ptrack"><div class="pbar"></div></div>';
+    el.style.left = clamp(x, 4, boardSize().w-134)+"px";
+    el.style.top  = clamp(y-34, 4, boardSize().h-40)+"px";
+    board.appendChild(el);
+    var bar = el.querySelector(".pbar");
+    var start = Date.now(), dur = seconds*1000;
+    var iv = setInterval(function(){
+      var f = Math.min(1, (Date.now()-start)/dur);
+      bar.style.width = (f*100)+"%";
+    }, 50);
+    setTimeout(function(){
+      clearInterval(iv);
+      if(el.parentNode) el.parentNode.removeChild(el);
+      onDone();
+    }, dur);
+  }
+
+  // ================= 拖拽 / 堆叠交互 =================
+  function onDown(e){
+    if(gameOver) return;   // 注意：产出进行中不再全局拦截，其他卡片照常可拖
+    var pel = e.target.closest ? e.target.closest(".packobj") : null;
+    if(pel){
+      var pk = null; for(var i=0;i<piles.length;i++){ if(piles[i].isPack){ pk = piles[i]; break; } }
+      if(pk){
+        drag = {pile:pk, isPack:true, moving:[], startX:e.clientX, startY:e.clientY, dx:0, dy:0, moved:false};
+        e.preventDefault(); return;
+      }
+    }
+    var el = e.target.closest ? e.target.closest(".card") : null;
+    if(!el) return;
+    var cid = parseInt(el.getAttribute("data-id"),10);
+    var card = null; allCards().forEach(function(c){ if(c.id===cid) card=c; });
+    if(!card) return;
+    var pile = pileOf(card);
+    if(!pile) return;
+    var idx = pile.cards.indexOf(card);          // 0 = 最底，n-1 = 最顶
+    var moving = pile.cards.slice(idx);          // 抓这张 + 它上面所有
+    drag = { pile:pile, index:idx, moving:moving, startX:e.clientX, startY:e.clientY, dx:0, dy:0, moved:false };
+    e.preventDefault();
+  }
+  function onMove(e){
+    if(!drag) return;
+    drag.dx = e.clientX - drag.startX;
+    drag.dy = e.clientY - drag.startY;
+    if(Math.abs(drag.dx)>4 || Math.abs(drag.dy)>4) drag.moved = true;
+    render();
+  }
+  function onUp(e){
+    if(!drag) return;
+    var d = drag; drag = null;
+    // 新手卡包：轻点打开，拖动则移动卡包
+    if(d.pile && d.pile.isPack){
+      if(!d.moved){ openPack(d.pile); return; }
+      d.pile.x = clamp(d.pile.x + d.dx, 6, boardSize().w-84-6);
+      d.pile.y = clamp(d.pile.y + d.dy, 6, boardSize().h-104-6);
+      render(); updateHUD();
+      return;
+    }
+    var bx = d.pile.x + d.dx;
+    var by = d.pile.y + d.index*STACK_OFF + d.dy;
+    var cx = bx + CARD_W/2, cy = by + CARD_H/2;
+
+    // 拖到市场 → 卖牛
+    var mr = marketEl.getBoundingClientRect();
+    var br = board.getBoundingClientRect();
+    if(cx>mr.left-br.left && cx<mr.right-br.left && cy>mr.top-br.top && cy<mr.bottom-br.top){
+      sellCows(d);
+      render(); updateHUD();
+      return;
+    }
+
+    var target = pileAtPoint(cx, cy, d.pile);
+    if(target){
+      var res = checkMerge(d.moving, target.cards);
+      if(res.ok){
+        if(res.info.kind==="feed"){ startFeed(d, target, bx, by); return; }
+        // 其它合并：从原堆取出，并入目标堆
+        detach(d.moving, d.pile);
+        target.cards = target.cards.concat(d.moving);
+        if(res.info.kind==="pasture"){
+          var wasPasture = target.cards.some(function(c){return c.type==="fence";}) && target.cards.some(function(c){return isCattle(c.type);});
+          toast(wasPasture ? "🌿 草料已叠入牧场（每天自动消耗3草料喂牛）" : "🏞 牧场组成：围栏+牛(+草料)，每天自动喂3草料");
+        }
+        if(res.info.kind==="bank"){
+          var tot=0;
+          target.cards = target.cards.filter(function(c){ if(c.type==="money"){ tot+=(c.value||1); return false; } return true; });
+          if(tot>0){ bankDeposit += tot; toast("存入银行卡 ¥"+tot); }
+        }
+        if(res.info.kind==="produce"){
+          busy = true;
+          showProgress(target.x, target.y + (target.cards.length-1)*STACK_OFF, PRODUCE_SEC,
+            "👷 产出中…", function(){
+              doProduce(res.info.combo, target);
+              busy = false; render(); updateHUD();
+            });
+          render(); updateHUD();
+          return;
+        }
+        render(); updateHUD();
+        return;
+      } else {
+        if(res.reverse){
+          if(res.info && res.info.kind==="feed") toast("要把草料拖到牛上才行（反向不行）");
+          else toast("要把员工拖到对应卡上才行（反向不行）");
+        }
+        else toast("这两类不能叠在一起");
+        // 非法 → 放到空地（不合并）
+        detach(d.moving, d.pile);
+        var nx = clamp(bx, 6, boardSize().w-CARD_W-6), ny = clamp(by, 6, boardSize().h-CARD_H-6);
+        makePile(nx, ny, d.moving);
+        render(); updateHUD();
+        return;
+      }
+    }
+
+    // 空地 → 拆成一堆
+    detach(d.moving, d.pile);
+    var x = clamp(bx, 6, boardSize().w-CARD_W-6), y = clamp(by, 6, boardSize().h-CARD_H-6);
+    makePile(x, y, d.moving);
+    render(); updateHUD();
+  }
+
+  function detach(moving, fromPile){
+    fromPile.cards = fromPile.cards.filter(function(c){return moving.indexOf(c)<0;});
+    if(fromPile.cards.length===0) removePile(fromPile);
+  }
+  function pileAtPoint(x, y, exclude){
+    for(var i=piles.length-1;i>=0;i--){
+      var p = piles[i]; if(p===exclude) continue;
+      for(var j=0;j<p.cards.length;j++){
+        var cx = p.x, cy = p.y + j*STACK_OFF;
+        if(x>=cx && x<=cx+CARD_W && y>=cy && y<=cy+CARD_H) return p;
+      }
+    }
+    return null;
+  }
+
+  // 牛吃草：草料(移动方 d.moving) 拖到 牛(目标方 target)；每棵1秒，每天最多3棵
+  function startFeed(d, target, bx, by){
+    var cow = target.cards.find(function(c){return isCattle(c.type);});
+    if(!cow){ // 兜底：目标里没牛，草料回到原处
+      detach(d.moving, d.pile);
+      makePile(clamp(bx,6,boardSize().w-CARD_W-6), clamp(by,6,boardSize().h-CARD_H-6), d.moving);
+      render(); updateHUD(); return;
+    }
+    var avail = d.moving.filter(function(c){return c.type==="grass";}).length;
+    var canEat = Math.min(avail, 3 - (cow.fedToday||0));
+    if((cow.fedToday||0)>=3){ toast("这头牛今天已吃饱（最多3草料）"); placeLeftover(d, target, bx, by); return; }
+    if(canEat<=0){ toast("草料不够啦"); placeLeftover(d, target, bx, by); return; }
+
+    detach(d.moving, d.pile);   // 草料先离开原堆
+    busy = true;
+    var eaten = 0;
+    showProgress(target.x, target.y, canEat, "🐮 吃草中…", function(){}); // 进度条仅作展示
+    function finish(){
+      if(d.moving.length>0){ // 没吃完的草料留在牛旁边
+        var x = clamp(target.x+34, 6, boardSize().w-CARD_W-6);
+        var y = clamp(target.y+34, 6, boardSize().h-CARD_H-6);
+        makePile(x, y, d.moving);
+      }
+      busy = false; render(); updateHUD();
+    }
+    function eatOne(){
+      if(eaten>=canEat){ finish(); return; }
+      var gi = d.moving.findIndex(function(c){return c.type==="grass";});
+      if(gi<0){ finish(); return; }
+      d.moving.splice(gi,1); eaten++;
+      cow.fedToday = (cow.fedToday||0)+1;
+      render(); updateHUD();
+      if(cow.fedToday>=3){            // 吃满即长阶（由吃草循环触发，不再靠进度条结束）
+        var idx = CATTLE.indexOf(cow.type);
+        if(idx>=0 && idx<CATTLE.length-1){
+          cow.type = CATTLE[idx+1];   // 注意：不重置 fedToday，这只牛今天已吃饱、即便变了形态也不能再吃
+          toast("🐮 吃满3草料，成长为「"+META[cow.type].label+"」（今天已吃饱）");
+        }
+        finish(); return;
+      }
+      setTimeout(eatOne, EAT_SEC*1000);
+    }
+    setTimeout(eatOne, EAT_SEC*1000);
+  }
+  function placeLeftover(d, target, bx, by){
+    if(d.moving.length>0){
+      makePile(clamp(bx,6,boardSize().w-CARD_W-6), clamp(by,6,boardSize().h-CARD_H-6), d.moving);
+    }
+    render(); updateHUD();
+  }
+
+  function sellCows(d){
+    var remaining = [];
+    d.moving.forEach(function(c){
+      if(isCattle(c.type)){
+        var price = META[c.type].sale || 0;
+        if(price>0) scatter([mk("money", price)]);
+        toast("售出「"+META[c.type].label+"」 +¥"+price);
+      } else { remaining.push(c); }
+    });
+    detach(d.moving, d.pile);
+    if(remaining.length>0){
+      if(d.pile.cards.length>0){ d.pile.cards = d.pile.cards.concat(remaining); }
+      else { makePile(clamp(d.pile.x,6,boardSize().w-CARD_W-6), clamp(d.pile.y,6,boardSize().h-CARD_H-6), remaining); }
+    }
+    if(d.pile.cards.length===0) removePile(d.pile);
+  }
+
+  // ================= 渲染 =================
+  function render(){
+    var old = board.querySelectorAll(".card, .packobj");
+    for(var i=0;i<old.length;i++) old[i].remove();
+    piles.forEach(function(p, pi){
+      if(p.isPack){
+        var x=p.x, y=p.y;
+        if(drag && drag.pile===p){ x+=drag.dx; y+=drag.dy; }
+        var el = document.createElement("div");
+        el.className = "packobj";
+        el.style.left = x+"px"; el.style.top = y+"px";
+        el.innerHTML = '<div class="pe">🎁</div><div class="pn">新手卡包</div>';
+        board.appendChild(el);
+        return;
+      }
+      p.cards.forEach(function(c, ci){
+        var x = p.x, y = p.y + ci*STACK_OFF;
+        if(drag && drag.moving.indexOf(c)>=0){ x+=drag.dx; y+=drag.dy; }
+        var el = document.createElement("div");
+        el.className = "card";
+        if(isCattle(c.type)) el.className += " cattle";
+        if(c.type==="bank") el.className += " bankcard";
+        if(drag && drag.moving.indexOf(c)>=0) el.className += " dragging";
+        el.style.left = x+"px"; el.style.top = y+"px";
+        el.style.zIndex = (pi*20 + ci);
+        el.setAttribute("data-id", c.id);
+        var emo = META[c.type] ? META[c.type].emoji : "❓";
+        var label = META[c.type] ? META[c.type].label : c.type;
+        if(c.type==="money") label = "¥"+(c.value||1);
+        if(c.type==="bank")  label = "¥"+bankDeposit;
+        var html = '<div class="ce">'+emo+'</div><div class="cn">'+label+'</div>';
+        if(isCattle(c.type)){
+          var f = c.fedToday||0;
+          var inPasture = p.cards.some(function(x){return x.type==="fence";});
+          if(inPasture) html += '<div class="cb">🏞牧场自动喂</div>';
+          else html += '<div class="cb">今日吃'+f+'/3</div>';
+        } else if(META[c.type] && META[c.type].note){
+          html += '<div class="cb">'+META[c.type].note+'</div>';
+        }
+        if(c.type==="money" && (c.value||1)>1) html += '<div class="moneybadge">¥'+(c.value||1)+'</div>';
+        el.innerHTML = html;
+        board.appendChild(el);
+      });
+    });
+  }
+
+  // ================= HUD =================
+  function fmtTime(s){ var m=Math.floor(s/60), ss=s%60; return (m<10?"0":"")+m+":"+(ss<10?"0":"")+ss; }
+  function updateHUD(){
+    $("dayStat").textContent = "第 "+day+" 天";
+    $("timer").textContent = fmtTime(timeLeft);
+    $("cashStat").textContent = "💰 ¥"+countMoneyOnBoard();
+    $("bankStat").textContent = "🏦 ¥"+bankDeposit;
+  }
+
+  // ================= 卡包 =================
+  function spawnPackCards(pack){
+    var cardsArr = [];
+    pack.items.forEach(function(it){ for(var i=0;i<it[1];i++) cardsArr.push(mk(it[0])); });
+    scatter(cardsArr);
+  }
+  function openPack(p){
+    removePile(p);
+    var cardsArr = [mk("employee"),mk("burger"),mk("calf"),mk("grass_pile"),mk("stump"),mk("money",10)];
+    scatter(cardsArr);
+    render(); updateHUD();
+    toast("🎁 新手卡包已打开！");
+  }
+  function buyPack(pack){
+    if(countMoneyOnBoard() + bankDeposit < pack.price){ toast("钱不够，需要 ¥"+pack.price); return; }
+    var need = pack.price;
+    piles.forEach(function(p){
+      for(var i=p.cards.length-1;i>=0 && need>0;i--){
+        var c = p.cards[i];
+        if(c.type==="money"){
+          var v = c.value||1;
+          if(v<=need){ need-=v; p.cards.splice(i,1); }
+          else { c.value = v-need; need=0; }
+        }
+      }
+    });
+    if(need>0){ bankDeposit -= need; need=0; }
+    spawnPackCards(pack);
+    render(); updateHUD();
+    toast("已购买「"+pack.name+"」");
+  }
+
+  // ================= 每日结算 / 结束弹窗 =================
+  function showDayEndModal(){
+    paused = true;
+    var ov = document.createElement("div");
+    ov.className = "overlay"; ov.id = "dayOverlay";
+    ov.innerHTML =
+      '<div class="modal">'+
+      '<h2>🌙 第 '+day+' 天已结束</h2>'+
+      '<p>员工会自动在农场里找 1 个汉堡吃掉；没找到汉堡的员工会饿死。</p>'+
+      '<p>牛今天吃的草料会清零，明天可以再吃。</p>'+
+      '<div class="row"><button class="btn" id="nextDayBtn">▶ 开始第 '+(day+1)+' 天</button></div>'+
+      '</div>';
+    board.appendChild(ov);
+    $("nextDayBtn").onclick = function(){
+      if(ov.parentNode) ov.parentNode.removeChild(ov);
+      runDayEnd();
+    };
+  }
+  // 牧场（围栏+牛+草料）每日自动消耗 3 草料并喂牛长大
+  function processPastures(){
+    piles.forEach(function(p){
+      var hasFence = p.cards.some(function(c){return c.type==="fence";});
+      var cow = p.cards.find(function(c){return isCattle(c.type);});
+      if(!hasFence || !cow) return;
+      var grassCount = p.cards.filter(function(c){return c.type==="grass";}).length;
+      if(grassCount < 3) return;
+      var removed = 0;
+      p.cards = p.cards.filter(function(c){ if(c.type==="grass" && removed<3){ removed++; return false; } return true; });
+      if(FEEDABLE.indexOf(cow.type) >= 0){
+        var idx = CATTLE.indexOf(cow.type);
+        cow.type = CATTLE[idx+1];
+        toast("🌿牧场自动喂食：「"+META[cow.type].label+"」成长（围栏保留）");
+      }
+      render(); updateHUD();
+    });
+  }
+  function runDayEnd(){
+    processPastures();   // 牧场每天自动消耗3草料并喂牛
+    // 员工自动吃场景里的一个汉堡
+    var emps = allCards().filter(function(c){return c.type==="employee";});
+    emps.forEach(function(emp){
+      var burger = null;
+      for(var i=0;i<piles.length && !burger;i++){
+        for(var j=0;j<piles[i].cards.length;j++){
+          if(piles[i].cards[j].type==="burger"){ burger = piles[i].cards[j]; break; }
+        }
+      }
+      if(burger){ removeCardObj(burger); }
+      else { removeCardObj(emp); }
+    });
+    // 牛的今日进食清零
+    allCards().forEach(function(c){ if(isCattle(c.type)) c.fedToday = 0; });
+    // 是否全员阵亡
+    var left = allCards().filter(function(c){return c.type==="employee";}).length;
+    day++; timeLeft = DAY_LEN; paused = false;
+    if(left===0){ endGame(); }
+    else { render(); updateHUD(); }
+  }
+
+  function endGame(){
+    gameOver = true;
+    var ov = document.createElement("div");
+    ov.className = "overlay"; ov.id = "overOverlay";
+    ov.innerHTML =
+      '<div class="modal adbox">'+
+      '<h2>🪦 本轮结束</h2>'+
+      '<p>所有员工都饿死啦！</p>'+
+      '<p style="color:#2e86de;font-weight:800;">看广告可复活 1 名员工（附赠 1 汉堡）</p>'+
+      '<div class="row">'+
+      '<button class="btn" id="adBtn">📺 看广告复活</button>'+
+      '<button class="btn alt" id="restartBtn">🔄 重新开始</button>'+
+      '</div></div>';
+    board.appendChild(ov);
+    $("adBtn").onclick = function(){
+      var box = ov.querySelector(".modal");
+      box.innerHTML = '<h2>📺 广告播放中…</h2><div class="spinner"></div><p>复活 1 名员工，请稍候</p>';
+      setTimeout(function(){
+        var s = boardSize();
+        makePile(rand(40,s.w-120), rand(40,s.h-180), [mk("employee"), mk("burger")]);
+        gameOver = false;
+        if(ov.parentNode) ov.parentNode.removeChild(ov);
+        render(); updateHUD();
+        toast("员工已复活，记得留汉堡！");
+      }, 1600);
+    };
+    $("restartBtn").onclick = function(){ location.reload(); };
+  }
+
+  // ================= 计时 =================
+  setInterval(function(){
+    if(paused || gameOver || busy) return;
+    timeLeft--;
+    if(timeLeft<=0){ timeLeft = 0; updateHUD(); showDayEndModal(); return; }
+    updateHUD();
+  }, 1000);
+
+  // ================= 事件绑定 =================
+  board.addEventListener("pointerdown", onDown);
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp);
+  $("pauseBtn").onclick = function(){
+    if(gameOver) return;
+    paused = !paused;
+    this.textContent = paused ? "▶ 继续" : "⏸ 暂停";
+  };
+  $("helpBtn").onclick = showHelp;
+  (function(){
+    var row = $("packRow");
+    PACKS.forEach(function(pack){
+      var d = document.createElement("div");
+      d.className = "pack";
+      d.innerHTML = '<div class="pemoji">'+pack.emoji+'</div><div class="pname">'+pack.name+'</div><div class="pprice">¥'+pack.price+'</div>';
+      d.onclick = function(){ buyPack(pack); };
+      row.appendChild(d);
+    });
+  })();
+
+  function showHelp(){
+    var ov = document.createElement("div");
+    ov.className = "overlay";
+    ov.innerHTML =
+      '<div class="modal">'+
+      '<h2>🐮 牛牛农场 · 玩法</h2>'+
+      '<p><b>目标</b>：赚钱抽卡包 → 雇员工 → 养牛卖牛，经营农场。</p>'+
+      '<p><b>怎么拿/拖</b></p>'+
+      '<ul>'+
+      '<li>按住<b>最底下</b>一张 → 整堆一起挪动。</li>'+
+      '<li>按住<b>中间</b>一张 → 只带走这张和它上面的。</li>'+
+      '<li>按住<b>最顶上</b>一张 → 只拆出那一张。</li>'+
+      '</ul>'+
+      '<p><b>产出（必须员工拖到卡上，2 秒进度条）</b></p>'+
+      '<ul>'+
+      '<li>👷员工 拖到 🌾草堆 → 3🍃草料（草堆消失）</li>'+
+      '<li>👷员工 拖到 🪵树桩 → 3🪵木头（树桩消失）</li>'+
+      '<li>👷员工 拖到 4🪵木头 → 1🚧围栏（木头消失）</li>'+
+      '<li>👷员工 拖到 🚧围栏 → 1💳银行卡（<b>仅消耗1张围栏</b>，其余围栏与员工保留）</li>'+
+      '</ul>'+
+      '<p><b>喂牛（每只牛无论形态，每天最多吃 3 草料）</b></p>'+
+      '<ul>'+
+      '<li>🍃草料 拖到 🐮牛（单独牛）→ 牛吃草，每棵1秒，吃满3棵长一阶（反向不行）</li>'+
+      '<li>🐮牛 拖到 🚧围栏 → 组成<b>牧场</b>；再往牧场里叠 🍃草料，每天<b>自动</b>消耗3草料喂牛长大（围栏不消失）</li>'+
+      '<li>牛犊→少年→青年→壮年→中年→老年，阶段越高卖越贵</li>'+
+      '</ul>'+
+      '<p>卡包（均 ¥5）：招聘/牛牛(1牛犊)/建筑/食物/🌾草堆(2草堆)。每天结束弹窗提醒；员工自动吃1汉堡，没汉堡饿死。把牛拖到 🏪市场 卖钱。</p>'+
+      '<button class="close" id="helpClose">知道啦</button>'+
+      '</div>';
+    board.appendChild(ov);
+    $("helpClose").onclick = function(){ ov.parentNode.removeChild(ov); };
+  }
+
+  // ================= 开局：新手卡包（画面中间，点击打开） =================
+  (function(){
+    var s = boardSize();
+    var pack = makePile(s.w/2 - 42, s.h/2 - 52, []);
+    pack.isPack = true; pack.packKind = "beginner";
+    updateHUD(); render();
+  })();
+
+})();
+</script>
+</body>
+</html>

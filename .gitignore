@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+.workbuddy/
+vite.config.js.timestamp-*.mjs
