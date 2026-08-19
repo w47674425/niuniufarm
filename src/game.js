@@ -4,7 +4,7 @@ import { createState, makePile, removePile, mk, scatter } from './state.js';
 import { render, updateHUD, toast, renderPack, bindTaskCheck } from './render.js';
 import { bindDrag } from './drag.js';
 import { tick, loadGame, saveGame, checkTasks } from './systems.js';
-import { showShop, showTasks, showCodex, showRecipes, showHelp, showSettings, toggleModal } from './modals.js';
+import { showShop, showTasks, showCodex, showRecipes, showCollection, showHelp, showSettings, toggleModal } from './modals.js';
 import { bindToast } from './merge.js';
 import { TICK_MS, SAVE_KEY, foodCapOf } from './config.js';
 import * as audio from './audio.js';
@@ -69,6 +69,7 @@ export class Game {
     this.refs.taskBtn.onclick = () => { if (!this.state.gameOver) { audio.play("ui.click"); toggleModal(this, "tasks", () => showTasks(this)); } };
     this.refs.codexBtn.onclick = () => { audio.play("ui.click"); toggleModal(this, "codex", () => showCodex(this)); };
     this.refs.recipeBtn.onclick = () => { audio.play("ui.click"); toggleModal(this, "recipes", () => showRecipes(this)); };
+    this.refs.collectBtn.onclick = () => { audio.play("ui.click"); toggleModal(this, "collect", () => showCollection(this)); };
     this.refs.helpBtn.onclick = () => { audio.play("ui.click"); toggleModal(this, "help", () => showHelp(this)); };
     this.refs.setBtn.onclick = () => { audio.play("ui.click"); toggleModal(this, "settings", () => showSettings(this)); };
     // 空格键：暂停/继续（输入框聚焦时不触发）
@@ -116,10 +117,9 @@ export class Game {
       const oldEl = this.board.querySelector(".packobj");
       if (oldEl) oldEl.remove();
       removePile(this, pack);
-      const cards = [mk(this, "herder"), mk(this, "herder"), mk(this, "dog"), mk(this, "tree"), mk(this, "rock"), mk(this, "bush"), mk(this, "blueberry"), mk(this, "blueberry"), mk(this, "wood"), mk(this, "stone"), mk(this, "branch")];
+      const cards = [mk(this, "herder"), mk(this, "dog"), mk(this, "tree"), mk(this, "rock"), mk(this, "bush"), mk(this, "blueberry"), mk(this, "blueberry"), mk(this, "wood"), mk(this, "stone"), mk(this, "branch")];
       cards[0].fed = foodCapOf("herder");
-      cards[1].fed = foodCapOf("herder"); // 给新手牧民一点食物缓冲
-      cards[2].fed = foodCapOf("dog");    // 牧羊犬同样满饱食开局
+      cards[1].fed = foodCapOf("dog");    // 牧羊犬满饱食开局
       scatter(this, cards);
       audio.play("ui.open");
       this.render();

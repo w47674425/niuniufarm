@@ -46,6 +46,30 @@ let checkTasksSafe = () => {};
 export function bindTaskCheck(fn) { checkTasksSafe = fn; }
 
 // ===================== 渲染棋盘 =====================
+// 手绘风单位形象：牧民（草帽小人）/牧羊犬（手绘狗）用内联 SVG，其余用 emoji
+function artFor(c, meta) {
+  if (c.type === "herder") {
+    return '<svg viewBox="0 0 64 64" width="52" height="52" class="art">' +
+      '<circle cx="32" cy="26" r="14" fill="#ffd9b3" stroke="#5b5340" stroke-width="2.5"/>' +
+      '<path d="M20 18 Q32 4 44 18 L44 24 Q32 10 20 24 Z" fill="#e8b04b" stroke="#5b5340" stroke-width="2.5"/>' +
+      '<circle cx="26" cy="24" r="2" fill="#3d4a30"/><circle cx="38" cy="24" r="2" fill="#3d4a30"/>' +
+      '<path d="M29 31 Q32 35 35 31" stroke="#5b5340" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+      '<path d="M20 60 Q32 46 44 60 L56 58 Q48 40 44 34 Q32 42 20 34 Q16 40 8 58 Z" fill="#f5b942" stroke="#5b5340" stroke-width="2.5"/>' +
+      '<path d="M18 50 Q32 42 46 50" stroke="#5b5340" stroke-width="2" fill="none"/>' +
+      '</svg>';
+  }
+  if (c.type === "dog") {
+    return '<svg viewBox="0 0 64 64" width="52" height="52" class="art">' +
+      '<path d="M18 40 Q10 22 22 14 Q26 22 30 20 Q30 8 42 12 Q46 20 40 26 Q46 32 44 40 Z" fill="#e8d5b0" stroke="#5b5340" stroke-width="2.5"/>' +
+      '<circle cx="34" cy="24" r="2" fill="#3d4a30"/><circle cx="42" cy="20" r="1.6" fill="#3d4a30"/>' +
+      '<path d="M14 40 Q8 54 12 60 L18 58 Q16 48 20 42 Z" fill="#e8d5b0" stroke="#5b5340" stroke-width="2"/>' +
+      '<path d="M44 42 Q50 54 46 60 L40 58 Q42 48 40 42 Z" fill="#e8d5b0" stroke="#5b5340" stroke-width="2"/>' +
+      '<path d="M22 50 Q32 44 40 50" stroke="#5b5340" stroke-width="2" fill="none"/>' +
+      '</svg>';
+  }
+  return meta.emoji;
+}
+
 export function render(game) {
   const board = game.board;
   const st = game.state;
@@ -78,7 +102,7 @@ export function render(game) {
       el.style.left = x + "px"; el.style.top = y + "px";
       el.style.zIndex = (pi * 20 + ci);
       el.setAttribute("data-id", c.id);
-      let html = '<div class="ce">' + meta.emoji + '</div><div class="cn">' + meta.label + '</div>';
+      let html = '<div class="ce">' + artFor(c, meta) + '</div><div class="cn">' + meta.label + '</div>';
       if (meta.cat === "mon" || (meta.atk && (c.type === "herder" || c.type === "dog"))) {
         const hpc = c.hp != null ? c.hp : meta.hp;
         const max = meta.hp;

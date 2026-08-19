@@ -26,19 +26,22 @@ RECIPES.forEach(r => { RECIPE_BY_ID[r.id] = r; });
 // 资源点产出（gather_* 与 prod_*，consume:false 无限产出）
 const PRODUCERS = RECIPES.filter(r => r.kind === "produce" && (r.id.startsWith("gather_") || r.id.startsWith("prod_")));
 
+// 变异牛随机：先按稀有度权重（普通40/稀有30/史诗20/传说10）选稀有度，再在该稀有度内均匀随机
 function makeCowBreed() {
   const total = COW_WEIGHTS.reduce((a, b) => a + b, 0);
   let r = RNG() * total;
-  for (let i = 0; i < COW_BREEDS.length; i++) { r -= COW_WEIGHTS[i]; if (r <= 0) return COW_BREEDS[i]; }
-  return COW_BREEDS[0];
+  let rarity = 1;
+  for (let i = 0; i < COW_WEIGHTS.length; i++) { r -= COW_WEIGHTS[i]; if (r <= 0) { rarity = i + 1; break; } }
+  const pool = COW_BREEDS.filter(t => META[t].rarity === rarity);
+  return pool[Math.floor(RNG() * pool.length)];
 }
 
-// 卡包内容（随机包展开）
+// 卡包内容（随机包展开；抽到牛：80% 普通牛，20% 变异牛）
 function packContents(pack) {
   if (pack.pool) {
     const pool = pack.pool.slice();
     for (let i = pool.length - 1; i > 0; i--) { const j = rr(i + 1); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-    return pool.slice(0, pack.count || 1).map(t => t === "cow" ? makeCowBreed() : t);
+    return pool.slice(0, pack.count || 1).map(t => t === "cow" ? (RNG() < 0.2 ? makeCowBreed() : "cow") : t);
   }
   const out = [];
   pack.items.forEach(it => { for (let i = 0; i < it[1]; i++) out.push(it[0]); });

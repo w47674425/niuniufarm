@@ -55,6 +55,9 @@ export function matchRecipe(game, p) {
     if (r.cooldown && p.cd > 0) continue;                    // 冷却中
     // 牛每日限量：挤奶每天最多 2 次（跨天重置见 onDayEnd）
     if (r.id === "milk_cow" && (game.state.milkToday || 0) >= 2) continue;
+    // 伐木场/采石场每日限量 3 次
+    if (r.id === "prod_lumberyard" && (game.state.lumberToday || 0) >= 3) continue;
+    if (r.id === "prod_quarry" && (game.state.quarryToday || 0) >= 3) continue;
     let ok = true;
     for (const k in r.in) { if ((cnt[k] || 0) < r.in[k]) { ok = false; break; } }
     if (!ok) continue;
@@ -93,13 +96,19 @@ function applyRecipe(game, p, r) {
   // 采集/生产/制作类配方：生成物掉落到附近空白处（spawnNear + 掉落动画）
   // craft 类产物掉落而非叠入原堆，避免装备/工具卡被「牧民直接吃掉」（即时触发 equip）
   if (r.kind === "produce" || r.kind === "craft") {
-    const outCards = [];
-    r.out.forEach(o => { for (let i = 0; i < o.n; i++) outCards.push(mk(game, o.type)); });
-    outCards.forEach(c => { markSeen(game, c.type); if (c.type === "wood") game.state.stats.totalWood++; });
-    const target = spawnNear(game, p, outCards);
-    // 记录掉落动画（由渲染层在 tick 中消费）
+    // 多种产物各占一堆（如砍树：木头堆与树枝堆分开掉落，不叠加）
+    const groups = r.out.map(o => {
+      const cards = [];
+      for (let i = 0; i < o.n; i++) cards.push(mk(game, o.type));
+      return cards;
+    });
     if (!game.state._drops) game.state._drops = [];
-    game.state._drops.push({ from: p, to: target });
+    groups.forEach(g => {
+      g.forEach(c => { markSeen(game, c.type); if (c.type === "wood") game.state.stats.totalWood++; });
+      const target = spawnNear(game, p, g);
+      // 记录掉落动画（由渲染层在 tick 中消费）
+      game.state._drops.push({ from: p, to: target });
+    });
   } else {
     r.out.forEach(o => {
       for (let i = 0; i < o.n; i++) {
@@ -112,6 +121,9 @@ function applyRecipe(game, p, r) {
   }
   // 挤奶计数：每日限量 2 瓶
   if (r.id === "milk_cow") game.state.milkToday = (game.state.milkToday || 0) + 1;
+  // 伐木场/采石场每日限量 3 次
+  if (r.id === "prod_lumberyard") game.state.lumberToday = (game.state.lumberToday || 0) + 1;
+  if (r.id === "prod_quarry") game.state.quarryToday = (game.state.quarryToday || 0) + 1;
   // 资源点采集次数：每次采集 -1，归零即消耗消失（仅采集类配方：输入含 node 卡）
   const rInputsNode = Object.keys(r.in).some(k => META[k] && META[k].cat === "node" && META[k].charges);
   if (r.kind === "produce" && rInputsNode) {
@@ -128,10 +140,16 @@ function applyRecipe(game, p, r) {
   if (r.kind === "breed") { p.cd = r.cooldown; }
   // 即时效果
   if (r.kind === "eat" || r.kind === "potion") {
+    // 药水多次使用：charges 递减，用完消失（每次 +5 血）
+    const potion = r.kind === "potion" ? p.cards.find(c => c.type === "potion") : null;
+    if (potion) {
+      potion.charges = (potion.charges != null ? potion.charges : META.potion.charges) - 1;
+      if (potion.charges <= 0) p.cards = p.cards.filter(c => c !== potion);
+    }
     const h = p.cards.find(c => c.type === "herder");
     if (h) {
       if (r.foodGain) { h.fed = Math.min(foodCapOf(h.type), (h.fed || 0) + r.foodGain); toast(game, "🍽 " + r.name + "：饱食 " + h.fed); }
-      if (r.hpGain) { if (h.hp == null) h.hp = META.herder.hp; h.hp += r.hpGain; toast(game, "❤️ " + r.name + "：血量+" + r.hpGain); }
+      if (r.hpGain) { if (h.hp == null) h.hp = META.herder.hp; h.hp += r.hpGain; toast(game, "❤️ " + r.name + "：血量+" + r.hpGain + (potion && potion.charges > 0 ? "（药水剩 " + potion.charges + " 次）" : "")); }
     }
     // 药水治狗（use_potion_dog 配方：狗+药水）
     const dog = p.cards.find(c => c.type === "dog");

@@ -79,18 +79,35 @@ body{
 #board{ position:relative; flex:1 1 auto; margin:8px; overflow:hidden; touch-action:none;
   border-radius:20px 17px 22px 18px / 18px 22px 17px 20px;
   border:3px solid rgba(255,255,255,.65);
-  background:var(--paper-noise),
+  background:
+    /* 手绘草叶：斜向短笔画纹理 */
+    repeating-linear-gradient(100deg, rgba(90,160,60,.16) 0 2px, transparent 2px 6px),
+    repeating-linear-gradient(80deg, rgba(90,160,60,.10) 0 1px, transparent 1px 4px),
     radial-gradient(circle at 15% 85%, rgba(160,220,120,.30) 0 13%, transparent 15%),
     radial-gradient(circle at 82% 70%, rgba(160,220,120,.26) 0 11%, transparent 13%),
-    rgba(255,255,255,.18);
+    linear-gradient(180deg, rgba(200,235,160,.55), rgba(150,210,110,.45));
   box-shadow:inset 0 0 40px rgba(90,130,60,.18), 0 4px 0 rgba(0,0,0,.15);
 }
+/* 手绘栅栏：四周围栏（木条 + 横梁），白色手绘风 */
+#board::before{ content:""; position:absolute; inset:0; pointer-events:none; z-index:2;
+  background:
+    /* 上/下横梁 */
+    repeating-linear-gradient(90deg, rgba(255,255,255,.75) 0 34px, transparent 34px 46px);
+  -webkit-mask: linear-gradient(0deg, #000 0 5px, transparent 5px 15px, #000 15px 20px, transparent 20px 95%, #000 95% 100%);
+          mask: linear-gradient(0deg, #000 0 5px, transparent 5px 15px, #000 15px 20px, transparent 20px 95%, #000 95% 100%);
+  border:2.5px solid rgba(150,110,60,.55);
+  border-radius:inherit;
+  opacity:.75;
+}
 #app.night #board{ border-color:rgba(170,200,255,.4);
-  background:var(--paper-noise),
+  background:
+    repeating-linear-gradient(100deg, rgba(80,110,200,.14) 0 2px, transparent 2px 6px),
     radial-gradient(circle at 15% 85%, rgba(120,150,230,.16) 0 13%, transparent 15%),
     radial-gradient(circle at 82% 70%, rgba(120,150,230,.12) 0 11%, transparent 13%),
-    rgba(20,30,55,.25);
-  box-shadow:inset 0 0 40px rgba(10,18,40,.5), 0 4px 0 rgba(0,0,0,.3);}
+    linear-gradient(180deg, rgba(35,50,95,.55), rgba(25,40,80,.5));
+}
+#app.night #board::before{ border-color:rgba(160,180,230,.5); opacity:.4; }
+#app.night #board{ box-shadow:inset 0 0 40px rgba(10,18,40,.5), 0 4px 0 rgba(0,0,0,.3);}
 
 /* —— 卡牌：手绘贴纸 —— */
 .card{ position:absolute; width:72px; height:90px;

@@ -1,7 +1,7 @@
 // 业务系统层：主循环昼夜 / 怪物 / 每日结算 / 存档 / 卡包 / 任务 / 出售 / 喂食
 // 对齐资料库准绳版「主循环 / 每日结算 / 卡包 / 任务 / 存档 / 堆叠触发」区块
 
-import { DAY_LEN, DAY_FRAC, TICK_MS, CARD_W, CARD_H, MON_SPEED, ENGAGE_DIST, META, PACKS, TASKS, SAVE_KEY, foodCapOf, COW_BREEDS, COW_WEIGHTS } from './config.js';
+import { DAY_LEN, DAY_FRAC, TICK_MS, CARD_W, CARD_H, MON_SPEED, ENGAGE_DIST, META, PACKS, TASKS, SAVE_KEY, foodCapOf, COW_BREEDS } from './config.js';
 import { rand, clamp } from './utils.js';
 import { mk, makePile, removePile, allCards, countType, removeCardObj, detach, scatter, popCount, markSeen } from './state.js';
 import { isFood, pileAction as _pileAction, doAction as _doAction } from './merge.js';
@@ -167,7 +167,9 @@ export function moveMonsters(game) {
 // ===================== 每日结算 =====================
 export function onDayEnd(game) {
   const st = game.state;
-  st.milkToday = 0; // 牛每日挤奶限量重置
+  st.milkToday = 0;     // 牛每日挤奶限量重置
+  st.lumberToday = 0;   // 伐木场每日限量重置
+  st.quarryToday = 0;   // 采石场每日限量重置
   // 所有单位（牧民/牧羊犬）每天消耗 1 餐饱食；
   // 饱食不足的单位自动进食：优先吃自己 diet 偏好的食物，没有则吃场上任意食物，都没有才饿死
   const units = allCards(game).filter(c => META[c.type] && META[c.type].cat === "unit");
@@ -209,15 +211,18 @@ export function onDayEnd(game) {
 }
 
 // ===================== 卡包 =====================
-// 牛品种加权随机（普通牛最常见，牦牛最稀有）
+// 变异牛随机：先按稀有度权重（普通40/稀有30/史诗20/传说10）选稀有度，再在该稀有度内均匀随机
 function randCowBreed() {
-  const total = COW_WEIGHTS.reduce((a, b) => a + b, 0);
+  const RARITY_WEIGHTS = [40, 30, 20, 10];
+  const total = RARITY_WEIGHTS.reduce((a, b) => a + b, 0);
   let r = Math.random() * total;
-  for (let i = 0; i < COW_BREEDS.length; i++) {
-    r -= COW_WEIGHTS[i];
-    if (r <= 0) return COW_BREEDS[i];
+  let rarity = 1;
+  for (let i = 0; i < RARITY_WEIGHTS.length; i++) {
+    r -= RARITY_WEIGHTS[i];
+    if (r <= 0) { rarity = i + 1; break; }
   }
-  return COW_BREEDS[0];
+  const pool = COW_BREEDS.filter(t => META[t].rarity === rarity);
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 export function buyPack(game, pack) {
@@ -232,8 +237,12 @@ export function buyPack(game, pack) {
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
     pool.slice(0, pack.count || 1).forEach(t => {
-      // 抽到"牛"时随机一个品种
-      cardsArr.push(mk(game, t === "cow" ? randCowBreed() : t));
+      // 抽到"牛"：80% 普通牛，20% 变异牛（变异牛再按稀有度随机）
+      if (t === "cow") {
+        cardsArr.push(mk(game, Math.random() < 0.2 ? randCowBreed() : "cow"));
+      } else {
+        cardsArr.push(mk(game, t));
+      }
     });
   } else {
     pack.items.forEach(it => { for (let i = 0; i < it[1]; i++) cardsArr.push(mk(game, it[0])); });
@@ -306,7 +315,7 @@ export function saveGame(game) {
     const st = game.state;
     const data = {
       day: st.day, timeLeft: st.timeLeft, phase: st.phase, gold: st.gold,
-      seenCards: st.seenCards, cardGets: st.cardGets, tasksDone: st.tasksDone, lastSave: Date.now(),
+      seenCards: st.seenCards, cardGets: st.cardGets, collection: st.collection, tasksDone: st.tasksDone, lastSave: Date.now(),
       piles: st.piles.map(p => ({
         x: p.x, y: p.y, isPack: p.isPack,
         cards: p.cards.map(c => {
@@ -337,6 +346,7 @@ export function loadGame(game) {
     st.gold = data.gold || 0;
     st.seenCards = data.seenCards || {};
     st.cardGets = data.cardGets || {};
+    st.collection = data.collection || {};
     st.tasksDone = data.tasksDone || {};
     (data.piles || []).forEach(sp => {
       const cards = (sp.cards || []).map(sc => {

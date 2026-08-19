@@ -14,7 +14,10 @@ export function createState() {
     paused: false,
     packOpened: false,    // 新手卡包是否已打开（未打开时倒计时冻结）
     speed: 1,             // 游戏速度倍率：1/2/4
-    milkToday: 0,         // 今日已挤奶次数（牛每日限量）
+    milkToday: 0,         // 今日已挤奶次数（牛每日限量 2）
+    lumberToday: 0,       // 伐木场今日产出次数（限 3）
+    quarryToday: 0,       // 采石场今日产出次数（限 3）
+    collection: {},       // 变异牛收藏：type → 获得次数
     gameOver: false,
     gold: 0,
     drag: null,
@@ -34,6 +37,10 @@ export function mk(game, type) {
   if (META[type].charges) c.charges = META[type].charges; // 资源点采集次数
   // 图鉴获取计数：卡包开出/采集产出/建造/繁殖/怪物掉落都走 mk
   game.state.cardGets[type] = (game.state.cardGets[type] || 0) + 1;
+  // 变异牛收藏：获得任意品种变异牛即入收藏（含重复次数）
+  if (META[type].cowKind) {
+    game.state.collection[type] = (game.state.collection[type] || 0) + 1;
+  }
   return c;
 }
 

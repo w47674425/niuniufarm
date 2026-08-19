@@ -1,6 +1,6 @@
 // 弹窗层：卡包商店 / 任务 / 图鉴 / 合成图鉴 / 帮助 / 设置 / 游戏结束
 
-import { META, PACKS, TASKS, RECIPES, foodCapOf } from './config.js';
+import { META, PACKS, TASKS, RECIPES, foodCapOf, COW_BREEDS } from './config.js';
 import { rand } from './utils.js';
 import { mk, makePile } from './state.js';
 import { render, updateHUD, toast } from './render.js';
@@ -74,11 +74,12 @@ export function showTasks(game) {
   return ov;
 }
 
-// 卡牌图鉴
+// 卡牌图鉴（不显示变异牛——它们在收藏系统展示；普通牛保留）
 export function showCodex(game) {
   const gets = game.state.cardGets || {};
-  let html = '<h2>📖 卡牌图鉴</h2><p>已发现 ' + Object.keys(game.state.seenCards).length + ' / ' + Object.keys(META).length + ' 种</p><div class="codex-grid">';
-  Object.keys(META).forEach(t => {
+  const allTypes = Object.keys(META).filter(t => !COW_BREEDS.includes(t));
+  let html = '<h2>📖 卡牌图鉴</h2><p>已发现 ' + Object.keys(game.state.seenCards).filter(t => !COW_BREEDS.includes(t)).length + ' / ' + allTypes.length + ' 种</p><div class="codex-grid">';
+  allTypes.forEach(t => {
     const seen = !!game.state.seenCards[t];
     const m = META[t];
     const n = gets[t] || 0;
@@ -90,6 +91,39 @@ export function showCodex(game) {
   html += '</div><button class="close" id="codexClose">关闭</button>';
   const ov = openModal(game, html);
   document.getElementById("codexClose").onclick = function () { closeModal(game, ov); };
+  return ov;
+}
+
+// 变异牛收藏（按稀有度分组：普通/稀有/史诗/传说；仅 12 种变异牛，普通牛不进收藏）
+const COLLECT_GROUPS = [
+  { rarity: 1, label: "⭐ 普通" },
+  { rarity: 2, label: "⭐⭐ 稀有" },
+  { rarity: 3, label: "⭐⭐⭐ 史诗" },
+  { rarity: 4, label: "⭐⭐⭐⭐ 传说" }
+];
+export function showCollection(game) {
+  const col = game.state.collection || {};
+  const cows = COW_BREEDS.filter(t => META[t] && META[t].cowKind);
+  const owned = cows.filter(t => (col[t] || 0) > 0).length;
+  let html = '<h2>🐮 变异牛收藏</h2><p>已收集 ' + owned + ' / ' + cows.length + ' 种</p>';
+  COLLECT_GROUPS.forEach(g => {
+    const list = cows.filter(t => META[t].rarity === g.rarity);
+    if (list.length === 0) return;
+    html += '<h3>' + g.label + '</h3><div class="codex-grid">';
+    list.forEach(t => {
+      const m = META[t];
+      const n = col[t] || 0;
+      const has = n > 0;
+      html += '<div class="codex-cell' + (has ? "" : " locked") + '">' +
+        (has ? '<span class="cc-count">×' + n + '</span>' : '') +
+        '<div class="cc-emoji">' + (has ? m.emoji : "❓") + '</div>' +
+        '<div class="cc-name">' + (has ? m.label : "未收集") + '</div></div>';
+    });
+    html += '</div>';
+  });
+  html += '<button class="close" id="colClose">关闭</button>';
+  const ov = openModal(game, html);
+  document.getElementById("colClose").onclick = function () { closeModal(game, ov); };
   return ov;
 }
 
