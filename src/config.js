@@ -22,14 +22,14 @@ export const META = {
   // —— 单位 ——
   herder:{cat:"unit", emoji:"🧑‍🌾", label:"牧民", atk:1, hp:5, sale:0, diet:"blueberry", foodCap:10},
   dog:   {cat:"unit", emoji:"🐕", label:"牧羊犬", atk:4, hp:15, sale:0, diet:"rawmeat", foodCap:8},
-// —— 资源点（牧民叠上去按配方产出，节点本身不消耗）——
-// charges: 采集次数，每次产出后 -1，归零即消耗消失（暂定统一 1）
-tree:     {cat:"node", emoji:"🌳", label:"树木", note:"牧民→木头×2 树枝×1", sale:0, charges:1},
-rock:     {cat:"node", emoji:"⛰️", label:"岩石", note:"牧民→石头×2", sale:0, charges:1},
-bush:     {cat:"node", emoji:"🌿", label:"蓝莓丛", note:"牧民→蓝莓×2", sale:0, charges:1},
-iron:     {cat:"node", emoji:"🗻", label:"铁矿脉", note:"牧民→铁矿石×2", sale:0, charges:1},
-gold:     {cat:"node", emoji:"💎", label:"金矿脉", note:"牧民→金矿石×1", sale:0, charges:1},
-herbfield:{cat:"node", emoji:"🌱", label:"药田", note:"牧民→药草", sale:0, charges:1},
+// —— 资源点（牧民叠上去按配方产出，每次采集消耗 1 次，归零即消失）——
+// charges: 采集次数（2026-08-19 经济修复 P0：限制无限产出通胀；树/岩/莓 5 次、矿 8 次 [PLACEHOLDER·待 playtest]）
+tree:     {cat:"node", emoji:"🌳", label:"树木", note:"牧民→木头×2 树枝×1", sale:0, charges:5},
+rock:     {cat:"node", emoji:"⛰️", label:"岩石", note:"牧民→石头×2", sale:0, charges:5},
+bush:     {cat:"node", emoji:"🌿", label:"蓝莓丛", note:"牧民→蓝莓×2", sale:0, charges:5},
+iron:     {cat:"node", emoji:"🗻", label:"铁矿脉", note:"牧民→铁矿石×2", sale:0, charges:4},
+gold:     {cat:"node", emoji:"💎", label:"金矿脉", note:"牧民→金矿石×1", sale:0, charges:4},
+herbfield:{cat:"node", emoji:"🌱", label:"药田", note:"牧民→药草", sale:0, charges:5},
   // —— 资源 / 材料 ——
   wood:     {cat:"res", emoji:"🪵", label:"木头", sale:2},
   branch:   {cat:"res", emoji:"🍃", label:"树枝", sale:1},
@@ -41,7 +41,6 @@ herbfield:{cat:"node", emoji:"🌱", label:"药田", note:"牧民→药草", sal
   flour:    {cat:"res", emoji:"🥣", label:"面粉", sale:3},
   ironingot:{cat:"res", emoji:"⚙️", label:"铁锭", sale:10},
   goldingot:{cat:"res", emoji:"🪙", label:"金锭", sale:15},
-  rawmeat:  {cat:"food", emoji:"🥩", label:"生肉", food:1, sale:3},
   // —— 装备 / 道具 ——
   sword:     {cat:"item", emoji:"🗡️", label:"木剑", sale:5},
   ironsword: {cat:"item", emoji:"⚔️", label:"铁剑", sale:12},
@@ -56,6 +55,8 @@ herbfield:{cat:"node", emoji:"🌱", label:"药田", note:"牧民→药草", sal
   bread:      {cat:"food", emoji:"🍞", label:"面包", food:3, sale:2},
   cookedmeat: {cat:"food", emoji:"🍖", label:"烤肉", food:4, sale:4},
   fruitplatter:{cat:"food", emoji:"🥗", label:"果蔬拼盘", food:3, sale:6},
+  milk:       {cat:"food", emoji:"🥛", label:"牛奶", food:1, sale:2},
+  rawmeat:  {cat:"food", emoji:"🥩", label:"生肉", food:1, sale:3},
   // —— 建筑 ——
   house:     {cat:"build", emoji:"🏠", label:"房屋", note:"人口+繁殖", sale:0},
   farm:      {cat:"build", emoji:"🌾", label:"麦田", note:"牧民→小麦×2", sale:0},
@@ -66,25 +67,34 @@ herbfield:{cat:"node", emoji:"🌱", label:"药田", note:"牧民→药草", sal
   warehouse: {cat:"build", emoji:"📦", label:"仓库", note:"堆叠上限↑", sale:0},
   wall:      {cat:"build", emoji:"🧱", label:"城墙", note:"减刷怪", sale:0},
   market:    {cat:"build", emoji:"🏪", label:"市场", note:"卖资源换钱", sale:0},
-  kennel:    {cat:"build", emoji:"🏰", label:"兵营", note:"训练牧羊犬", sale:0},
   // —— 牲畜 ——
   pig:   {cat:"life", emoji:"🐷", label:"猪", note:"牧民→生肉×3", sale:15},
-  sheep: {cat:"life", emoji:"🐑", label:"绵羊", note:"+兵营→牧羊犬", sale:15},
-  cow:   {cat:"life", emoji:"🐮", label:"牛", note:"牧民→生肉×5", sale:30},
+  // 牛分 5 品种（动物卡包开出时随机一种），产出一致（牛奶），稀有度影响出售价
+  cow:     {cat:"life", emoji:"🐮", label:"普通牛", note:"牧民→牛奶（持续产奶）", sale:30, rarity:1, cowKind:"cow"},
+  yak:     {cat:"life", emoji:"🦬", label:"牦牛", note:"高原牦牛，耐寒耐苦，产奶", sale:45, rarity:3, cowKind:"cow"},
+  bison:   {cat:"life", emoji:"🦏", label:"野牛", note:"美洲/欧洲野牛，可与普通牛杂交", sale:35, rarity:2, cowKind:"cow"},
+  buffalo: {cat:"life", emoji:"🐃", label:"水牛", note:"水稻区役畜，兼作乳用", sale:40, rarity:2, cowKind:"cow"},
+  ox:      {cat:"life", emoji:"🐂", label:"黄牛", note:"耕地拉车，肉用制革", sale:32, rarity:1, cowKind:"cow"},
   // —— 怪物（夜间刷新）——
   thief: {cat:"mon", emoji:"🥷", label:"小偷", atk:1, hp:6, drop:8, sale:0},
   bandit:{cat:"mon", emoji:"👹", label:"大盗", atk:4, hp:16, drop:20, sale:0}
 };
 
+// ===================== 牛品种 =====================
+// 牛家族：milk_cow 配方 in:{cow:1} 匹配任意品种（见 merge.matchRecipe 的 COW_ALIAS）
+// 卡包开出 "cow" 时按权重随机替换为具体品种
+export const COW_BREEDS = ["cow", "ox", "buffalo", "bison", "yak"];
+export const COW_WEIGHTS = [40, 25, 20, 10, 5]; // 普通牛最常见，牦牛最稀有
+
 // 卡包定义（2026-08-19 重构：基础/牧场/动物/植物/建筑）
-// 动物、植物卡包价格用户未给，暂按梯度推断 [PLACEHOLDER·待确认]
+// 动物卡包：pool 随机抽出 count 种，各 1 张；其余卡包固定 items
 export const PACKS = [
   {id:"basic", name:"基础卡包", emoji:"📦", price:10,
     desc:"蓝莓丛/树木/岩石", items:[["bush",1],["tree",1],["rock",1]]},
-  {id:"ranch", name:"牧场卡包", emoji:"🐮", price:20,
-    desc:"牧民/牧羊犬", items:[["herder",1],["dog",1]]},
-  {id:"animal", name:"动物卡包", emoji:"🐑", price:25, // [PLACEHOLDER·价格待确认]
-    desc:"绵羊/牛/猪", items:[["sheep",1],["cow",1],["pig",1]]},
+  {id:"ranch", name:"牧场卡包", emoji:"🧑‍🌾", price:20,
+    desc:"牧民×1", items:[["herder",1]]},
+  {id:"animal", name:"动物卡包", emoji:"🐑", price:20,
+    desc:"猪/狗/牛 随机出 2 个（牛随机品种）", pool:["pig","dog","cow"], count:2},
   {id:"plant", name:"植物卡包", emoji:"🌾", price:15, // [PLACEHOLDER·价格待确认]
     desc:"麦田/药田", items:[["farm",1],["herbfield",1]]},
   {id:"building", name:"建筑卡包", emoji:"🏗️", price:30,
@@ -120,10 +130,10 @@ export const RECIPES = [
   {id:"eat_cookedmeat", name:"食用烤肉", in:{herder:1, cookedmeat:1}, out:[], sec:1, consume:true, kind:"eat", foodGain:4, hpGain:2, label:"🍖 进食中"},
   {id:"eat_fruitplatter", name:"食用果蔬拼盘", in:{herder:1, fruitplatter:1}, out:[], sec:1, consume:true, kind:"eat", foodGain:3, label:"🥗 进食中"},
   {id:"use_potion", name:"使用药水", in:{herder:1, potion:1}, out:[], sec:1, consume:true, kind:"potion", hpGain:10, label:"🧪 治疗中"},
-  {id:"equip_sword", name:"装备木剑", in:{herder:1, sword:1}, out:[], sec:1, consume:true, kind:"equip", atk:1, label:"🗡️ 装备中"},
-  {id:"equip_ironsword", name:"装备铁剑", in:{herder:1, ironsword:1}, out:[], sec:1, consume:true, kind:"equip", atk:3, label:"⚔️ 装备中"},
-  {id:"equip_shield", name:"装备木盾", in:{herder:1, woodshield:1}, out:[], sec:1, consume:true, kind:"equip", hp:3, label:"🛡️ 装备中"},
-  {id:"equip_ironshield", name:"装备铁盾", in:{herder:1, ironshield:1}, out:[], sec:1, consume:true, kind:"equip", hp:6, label:"🪖 装备中"},
+  {id:"equip_sword", name:"狗装备木剑", in:{dog:1, sword:1}, out:[], sec:1, consume:true, kind:"equip", atk:1, label:"🗡️ 装备中"},
+  {id:"equip_ironsword", name:"狗装备铁剑", in:{dog:1, ironsword:1}, out:[], sec:1, consume:true, kind:"equip", atk:3, label:"⚔️ 装备中"},
+  {id:"equip_shield", name:"狗装备木盾", in:{dog:1, woodshield:1}, out:[], sec:1, consume:true, kind:"equip", hp:3, label:"🛡️ 装备中"},
+  {id:"equip_ironshield", name:"狗装备铁盾", in:{dog:1, ironshield:1}, out:[], sec:1, consume:true, kind:"equip", hp:6, label:"🪖 装备中"},
   // —— 建造（动作类，优先于手工：凑齐建材即建成建筑，而非误做手工）——
   {id:"build_house", name:"建造房屋", in:{herder:1, wood:2, stone:1}, out:[{type:"house",n:1}], sec:15, consume:true, kind:"build", label:"🏠 建造中"},
   {id:"build_farm", name:"建造农场", in:{herder:1, wood:3, stone:1}, out:[{type:"farm",n:1}], sec:20, consume:true, kind:"build", label:"🏡 建造中"},
@@ -134,7 +144,6 @@ export const RECIPES = [
   {id:"build_warehouse", name:"建造仓库", in:{herder:1, wood:4, stone:2}, out:[{type:"warehouse",n:1}], sec:22, consume:true, kind:"build", label:"📦 建造中"},
   {id:"build_wall", name:"建造城墙", in:{herder:1, stone:3}, out:[{type:"wall",n:1}], sec:12, consume:true, kind:"build", label:"🧱 建造中"},
   {id:"build_market", name:"建造市场", in:{herder:1, wood:3, stone:2}, out:[{type:"market",n:1}], sec:20, consume:true, kind:"build", label:"🏪 建造中"},
-  {id:"build_kennel", name:"建造兵营", in:{herder:1, wood:4, stone:3, ironingot:1}, out:[{type:"kennel",n:1}], sec:25, consume:true, kind:"build", label:"🏰 建造中"},
   // —— 制作（手工）——
   {id:"craft_wooden_sword", name:"制作木剑", in:{herder:1, branch:2}, out:[{type:"sword",n:1}], sec:5, consume:true, kind:"craft", label:"🗡️ 制作中"},
   {id:"craft_iron_sword", name:"制作铁剑", in:{herder:1, ironingot:1, branch:1}, out:[{type:"ironsword",n:1}], sec:10, consume:true, kind:"craft", need:"smelter", label:"⚔️ 制作中"},
@@ -152,11 +161,11 @@ export const RECIPES = [
   {id:"cook_bread", name:"烤面包", in:{herder:1, flour:1}, out:[{type:"bread",n:1}], sec:8, consume:true, kind:"cook", need:"kitchen", label:"🍞 烘焙中"},
   {id:"cook_meat", name:"烤肉", in:{herder:1, rawmeat:1}, out:[{type:"cookedmeat",n:1}], sec:6, consume:true, kind:"cook", need:"kitchen", label:"🍖 烤肉中"},
   {id:"cook_platter", name:"果蔬拼盘", in:{herder:1, blueberry:3, herb:1}, out:[{type:"fruitplatter",n:1}], sec:10, consume:true, kind:"cook", need:"kitchen", label:"🥗 拼盘中"},
-  // —— 宰杀 / 繁殖 / 训练 ——
+  // —— 宰杀 / 繁殖 / 训练 / 畜牧 ——
   {id:"slaughter_pig", name:"宰杀猪", in:{herder:1, pig:1}, out:[{type:"rawmeat",n:3}], sec:3, consume:true, kind:"slaughter", label:"🔪 宰杀中"},
-  {id:"slaughter_cow", name:"宰杀牛", in:{herder:1, cow:1}, out:[{type:"rawmeat",n:5}], sec:4, consume:true, kind:"slaughter", label:"🔪 宰杀中"},
+  // 牛是持续资产：牧民+任意品种牛 产奶不消耗牛（品种间配方通用，见 COW_KINDS）
+  {id:"milk_cow", name:"挤牛奶", in:{herder:1, cow:1}, out:[{type:"milk",n:1}], sec:4, consume:false, kind:"produce", label:"🥛 挤奶中"},
   {id:"breed_baby", name:"繁殖", in:{herder:2, house:1}, out:[{type:"herder",n:1}], sec:10, consume:true, kind:"breed", cooldown:120, label:"👶 繁殖中"},
-  {id:"train_dog", name:"训练牧羊犬", in:{herder:1, sheep:1, kennel:1}, out:[{type:"dog",n:1}], sec:15, consume:true, kind:"train", label:"🐕 训练中"},
   // —— 建筑生产（被动，建筑已建好后的自动产出）——
   {id:"prod_lumberyard", name:"伐木", in:{herder:1, lumberyard:1}, out:[{type:"wood",n:3}], sec:6, consume:false, kind:"produce", label:"🪓 生产中"},
   {id:"prod_quarry", name:"采石", in:{herder:1, quarry:1}, out:[{type:"stone",n:3}], sec:6, consume:false, kind:"produce", label:"⚒️ 生产中"},

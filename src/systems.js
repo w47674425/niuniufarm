@@ -1,12 +1,13 @@
 // 业务系统层：主循环昼夜 / 怪物 / 每日结算 / 存档 / 卡包 / 任务 / 出售 / 喂食
 // 对齐资料库准绳版「主循环 / 每日结算 / 卡包 / 任务 / 存档 / 堆叠触发」区块
 
-import { DAY_LEN, DAY_FRAC, TICK_MS, CARD_W, CARD_H, MON_SPEED, ENGAGE_DIST, META, PACKS, TASKS, SAVE_KEY, foodCapOf } from './config.js';
+import { DAY_LEN, DAY_FRAC, TICK_MS, CARD_W, CARD_H, MON_SPEED, ENGAGE_DIST, META, PACKS, TASKS, SAVE_KEY, foodCapOf, COW_BREEDS, COW_WEIGHTS } from './config.js';
 import { rand, clamp } from './utils.js';
 import { mk, makePile, removePile, allCards, countType, removeCardObj, detach, scatter, popCount, markSeen } from './state.js';
 import { isFood, pileAction as _pileAction, doAction as _doAction } from './merge.js';
 import { render, updateHUD, toast, playDrop } from './render.js';
 import { endGame } from './modals.js';
+import * as audio from './audio.js';
 
 // ===================== 主循环 tick（由 game 每 TICK_MS 调用） =====================
 export function tick(game) {
@@ -29,6 +30,24 @@ export function tick(game) {
       p.prog = 0;
       _doAction(game, p, info);
       render(game); updateHUD(game);
+      // 配方完成音：按配方 kind/id 映射
+      if (info.recipe) {
+        const rid = info.recipe.id || "";
+        if (rid.startsWith("gather_")) {
+          if (rid === "gather_wood") audio.play("gather.wood");
+          else if (rid === "gather_stone") audio.play("gather.stone");
+          else if (rid === "gather_blueberry" || rid === "gather_herb") audio.play("gather.berry");
+          else audio.play("gather.ore");
+        } else if (info.recipe.kind === "breed") {
+          audio.play("breed");
+        } else if (info.recipe.kind === "eat" || info.recipe.kind === "potion") {
+          audio.play("eat");
+        } else {
+          // 建造/制作/冶炼/烹饪/宰杀/训练 → 完成琶音，按 kind 微调音高
+          const step = info.recipe.kind === "build" ? -3 : (info.recipe.kind === "slaughter" ? -2 : 0);
+          audio.play("craft.finish", { step });
+        }
+      }
       // 消费采集/生产产出的掉落动画
       if (st._drops && st._drops.length > 0) {
         st._drops.forEach(d => playDrop(game, d.from, d.to));
@@ -38,6 +57,9 @@ export function tick(game) {
   });
   // 怪物移动与交战
   moveMonsters(game);
+  // 自适应音乐状态：昼夜 + 威胁等级（夜间怪物数 /6，封顶 1）
+  const monCount = st.piles.reduce((a, p) => a + p.cards.filter(c => META[c.type] && META[c.type].cat === "mon").length, 0);
+  audio.setMusicState(st.phase, st.phase === "night" ? Math.min(monCount / 6, 1) : 0);
   // 有进行中的生产/建造/战斗时每 tick 重绘，进度条持续显示并前进
   const anyActive = st.piles.some(p => !p.isPack && p.action && p.actionSec);
   if (anyActive) render(game);
@@ -58,6 +80,7 @@ export function updatePhase(game) {
   if (newPhase !== st.phase) {
     st.phase = newPhase;
     game.app.classList.toggle("night", st.phase === "night");
+    audio.play(st.phase === "night" ? "night.start" : "day.start");
     if (st.phase === "night") { st.nightSpawned = false; onNightStart(game); }
     else { onDayStart(game); }
   } else if (st.phase === "night" && !st.nightSpawned) {
@@ -89,6 +112,7 @@ export function spawnMonsters(game) {
     markSeen(game, type);
     makePile(game, x, y, [m]);
   }
+  if (n > 0) audio.play("combat.monster");
 }
 
 export function clearMonsters(game) {
@@ -141,22 +165,23 @@ export function moveMonsters(game) {
 export function onDayEnd(game) {
   const st = game.state;
   // 所有单位（牧民/牧羊犬）每天消耗 1 餐饱食；
-  // 饱食不足的单位会先自动吃 1 个自己 diet 配置的物资，场上没有对应物资才死亡
+  // 饱食不足的单位自动进食：优先吃自己 diet 偏好的食物，没有则吃场上任意食物，都没有才饿死
   const units = allCards(game).filter(c => META[c.type] && META[c.type].cat === "unit");
   let starved = 0, ateFood = 0;
   const dietEaten = {}; // {物资type: 数量}
   units.slice().forEach(c => {
     if ((c.fed || 0) >= 1) { c.fed -= 1; return; }
     const dietType = META[c.type].diet;
-    if (dietType) {
-      const foodCard = allCards(game).find(x => x.type === dietType);
-      if (foodCard) {
-        removeCardObj(game, foodCard);
-        c.fed = Math.min(foodCapOf(c.type), (c.fed || 0) + (META[dietType].food || 1));
-        ateFood++;
-        dietEaten[dietType] = (dietEaten[dietType] || 0) + 1;
-        return;
-      }
+    // 优先 diet 偏好食物
+    let foodCard = dietType ? allCards(game).find(x => x.type === dietType) : null;
+    // 没有偏好食物 → 任意食物兜底
+    if (!foodCard) foodCard = allCards(game).find(x => META[x.type] && META[x.type].cat === "food");
+    if (foodCard) {
+      removeCardObj(game, foodCard);
+      c.fed = Math.min(foodCapOf(c.type), (c.fed || 0) + (META[foodCard.type].food || 1));
+      ateFood++;
+      dietEaten[foodCard.type] = (dietEaten[foodCard.type] || 0) + 1;
+      return;
     }
     removeCardObj(game, c);
     starved++;
@@ -164,8 +189,9 @@ export function onDayEnd(game) {
   if (ateFood > 0) {
     const parts = Object.keys(dietEaten).map(t => META[t].emoji + " " + META[t].label + "×" + dietEaten[t]);
     toast(game, "🍽 " + ateFood + " 个单位吃了 " + parts.join("、") + " 充饥");
+    audio.play("eat");
   }
-  if (starved > 0) toast(game, "💀 " + starved + " 个单位没有食物，饿死了");
+  if (starved > 0) { toast(game, "💀 " + starved + " 个单位没有食物，饿死了"); audio.play("starve"); }
   else if (ateFood === 0) toast(game, "🌅 第 " + st.day + " 天结束，牧场平安度过了");
   // 是否全员阵亡（无牧民则游戏结束）
   if (popCount(game) === 0) { endGame(game); return; }
@@ -179,13 +205,38 @@ export function onDayEnd(game) {
 }
 
 // ===================== 卡包 =====================
+// 牛品种加权随机（普通牛最常见，牦牛最稀有）
+function randCowBreed() {
+  const total = COW_WEIGHTS.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < COW_BREEDS.length; i++) {
+    r -= COW_WEIGHTS[i];
+    if (r <= 0) return COW_BREEDS[i];
+  }
+  return COW_BREEDS[0];
+}
+
 export function buyPack(game, pack) {
-  if (game.state.gold < pack.price) { toast(game, "金币不足，需要 ¥" + pack.price); return; }
+  if (game.state.gold < pack.price) { audio.play("ui.error"); toast(game, "金币不足，需要 ¥" + pack.price); return; }
   game.state.gold -= pack.price;
   const cardsArr = [];
-  pack.items.forEach(it => { for (let i = 0; i < it[1]; i++) cardsArr.push(mk(game, it[0])); });
+  if (pack.pool) {
+    // 随机卡包：从 pool 中不重复抽取 count 种
+    const pool = pack.pool.slice();
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    pool.slice(0, pack.count || 1).forEach(t => {
+      // 抽到"牛"时随机一个品种
+      cardsArr.push(mk(game, t === "cow" ? randCowBreed() : t));
+    });
+  } else {
+    pack.items.forEach(it => { for (let i = 0; i < it[1]; i++) cardsArr.push(mk(game, it[0])); });
+  }
   scatter(game, cardsArr);
   render(game); updateHUD(game); saveGame(game);
+  audio.play("ui.open");
   toast(game, "已购买「" + pack.name + "」");
 }
 
@@ -198,6 +249,7 @@ export function checkTasks(game) {
       st.tasksDone[t.id] = true;
       st.gold += t.rew;
       st.stats.gold = st.gold;
+      audio.play("ui.task");
       toast(game, "✅ 任务完成：「" + t.name + "」 +¥" + t.rew);
     }
   });
@@ -240,11 +292,17 @@ export function feedUnit(game, d, target) {
 
 // ===================== 存档 =====================
 export function saveGame(game) {
+  // 失败后不再写档：gameOver 状态下任何保存（含 beforeunload）都改为删档，
+  // 保证刷新即开新局，而不是恢复失败前的旧状态
+  if (game.state.gameOver) {
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) { }
+    return;
+  }
   try {
     const st = game.state;
     const data = {
       day: st.day, timeLeft: st.timeLeft, phase: st.phase, gold: st.gold,
-      seenCards: st.seenCards, tasksDone: st.tasksDone, lastSave: Date.now(),
+      seenCards: st.seenCards, cardGets: st.cardGets, tasksDone: st.tasksDone, lastSave: Date.now(),
       piles: st.piles.map(p => ({
         x: p.x, y: p.y, isPack: p.isPack,
         cards: p.cards.map(c => {
@@ -274,13 +332,19 @@ export function loadGame(game) {
     st.timeLeft = data.timeLeft || DAY_LEN;
     st.gold = data.gold || 0;
     st.seenCards = data.seenCards || {};
+    st.cardGets = data.cardGets || {};
     st.tasksDone = data.tasksDone || {};
     (data.piles || []).forEach(sp => {
       const cards = (sp.cards || []).map(sc => {
         const c = mk(game, sc.type);
         if (sc.hp != null) c.hp = sc.hp;
         if (sc.fed != null) c.fed = sc.fed;
-        if (sc.charges != null) c.charges = sc.charges;
+        if (sc.charges != null) {
+          // 旧档迁移兜底：META 配置更新后（如 charges 1→5），
+          // 若存档值 ≤ 1 视为旧默认值，重置为当前 META 配置；
+          // 已部分消耗（>1）的保留实际剩余次数
+          c.charges = sc.charges <= 1 ? (META[sc.type] && META[sc.type].charges || sc.charges) : sc.charges;
+        }
         if (sc.atkBonus) c.atkBonus = sc.atkBonus;
         if (sc.hpBonus) c.hpBonus = sc.hpBonus;
         return c;

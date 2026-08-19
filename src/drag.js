@@ -6,6 +6,7 @@ import { makePile, pileOf, allCards, detach, pileAtPoint } from './state.js';
 import { render, updateHUD } from './render.js';
 import { sellCards, feedUnit } from './systems.js';
 import { isFood } from './merge.js';
+import * as audio from './audio.js';
 
 export function bindDrag(game) {
   const board = game.board;
@@ -17,6 +18,7 @@ export function bindDrag(game) {
     // 不再依赖卡包元素自身挂的监听器（某些浏览器/WebView 下可能不生效）。
     if (e.target && e.target.closest && e.target.closest(".packobj")) {
       e.preventDefault();
+      audio.play("ui.open");
       const pk = game.state.piles.find(p => p.isPack);
       if (pk && pk._open) pk._open();
       return;
@@ -34,6 +36,9 @@ export function bindDrag(game) {
     const moving = p.cards.slice(idx);
     game.state.drag = { pile: p, index: idx, moving, startX: e.clientX, startY: e.clientY, dx: 0, dy: 0, moved: false };
     e.preventDefault();
+    // 抓起音：按抓到的最顶卡类别参数化
+    const topCard = moving[moving.length - 1];
+    audio.grab(META[topCard.type] ? META[topCard.type].cat : "res");
   }
 
   function onMove(e) {
@@ -52,11 +57,14 @@ export function bindDrag(game) {
     const bx = d.pile.x + d.dx;
     const by = d.pile.y + d.index * STACK_OFF + d.dy;
     const cx = bx + CARD_W / 2, cy = by + CARD_H / 2;
+    // 落卡类别（参数化 drop 音）
+    const dropCat = META[d.moving[d.moving.length - 1].type] ? META[d.moving[d.moving.length - 1].type].cat : "res";
 
     // 拖到市场 → 出售
     const mr = marketEl.getBoundingClientRect(), br = board.getBoundingClientRect();
     if (cx > mr.left - br.left && cx < mr.right - br.left && cy > mr.top - br.top && cy < mr.bottom - br.top) {
       sellCards(game, d);
+      audio.play("money.sell");
       render(game); updateHUD(game);
       return;
     }
@@ -68,6 +76,7 @@ export function bindDrag(game) {
       if (d.moving.some(c => isFood(c.type)) && targetUnit) {
         detach(game, d.moving, d.pile);
         feedUnit(game, d, target);
+        audio.play("feed");
         // 没喂完的食物卡（含吃撑了的）叠到目标堆
         if (d.moving.length > 0) target.cards = target.cards.concat(d.moving);
         render(game); updateHUD(game);
@@ -75,6 +84,7 @@ export function bindDrag(game) {
       }
       detach(game, d.moving, d.pile);
       target.cards = target.cards.concat(d.moving);
+      audio.drop(dropCat, true);
       render(game); updateHUD(game);
       return;
     }
@@ -82,6 +92,7 @@ export function bindDrag(game) {
     detach(game, d.moving, d.pile);
     const x = clamp(bx, 6, game.boardSize().w - CARD_W - 6), y = clamp(by, 6, game.boardSize().h - CARD_H - 6);
     makePile(game, x, y, d.moving);
+    audio.drop(dropCat, false);
     render(game); updateHUD(game);
   }
 

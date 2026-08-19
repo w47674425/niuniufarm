@@ -1,6 +1,6 @@
 // 渲染层：把状态画到 DOM 上（对齐资料库准绳版「渲染 / HUD」区块）
 
-import { CARD_W, CARD_H, STACK_OFF, META, foodCapOf } from './config.js';
+import { CARD_W, CARD_H, STACK_OFF, META, DAY_LEN, DAY_FRAC, foodCapOf } from './config.js';
 import { clamp } from './utils.js';
 import { allCards, countType, popCap, popCount } from './state.js';
 import { pileAction } from './merge.js';
@@ -19,6 +19,10 @@ export function updateHUD(game) {
   if (st.phase === "day") { ph.textContent = "☀️ 白天"; ph.className = "stat"; ph.classList.add("day"); }
   else { ph.textContent = "🌙 夜晚"; ph.className = "stat"; ph.classList.add("night"); }
   game.refs.timer.textContent = fmtTime(st.timeLeft);
+  // 夜晚来临前 10 秒：timer 放大警示（仅白天段生效，入夜后恢复）
+  const nightAt = DAY_LEN * (1 - DAY_FRAC); // 夜晚开始剩余秒数
+  const warn = (st.phase === "day" && st.timeLeft <= nightAt + 10);
+  game.refs.timer.classList.toggle("night-warn", warn);
   game.refs.goldStat.textContent = "💰 ¥" + st.gold;
   game.refs.popStat.textContent = "🧑 " + popCount(game) + "/" + popCap(game);
   let herderFood = 0;
@@ -30,7 +34,7 @@ export function updateHUD(game) {
   st.stats.walls = countType(game, "wall");
   st.stats.smelters = countType(game, "smelter");
   st.stats.gold = st.gold;
-  st.stats.equipped = allCards(game).filter(c => c.type === "herder" && (c.atkBonus || 0) > 0).length;
+  st.stats.equipped = allCards(game).filter(c => c.type === "dog" && (c.atkBonus || 0) > 0).length;
 }
 
 export function toast(game, msg) {
@@ -98,6 +102,9 @@ export function render(game) {
       } else if (meta.cat === "node" && meta.charges) {
         const left = (c.charges != null ? c.charges : meta.charges);
         html += '<div class="cb">可采 ' + left + ' 次</div>';
+      } else if (meta.cowKind && meta.rarity) {
+        // 牛品种：稀有度星标（note 不重复显示，卡片空间有限）
+        html += '<div class="cb cow-r' + meta.rarity + '">' + "★".repeat(meta.rarity) + ' ' + meta.label + '</div>';
       } else if (meta.note) {
         html += '<div class="cb">' + meta.note + '</div>';
       }

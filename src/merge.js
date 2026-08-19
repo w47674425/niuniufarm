@@ -1,11 +1,16 @@
 // 堆行为规则层（纯逻辑，不碰 DOM）：配方匹配 / 堆行为解释 / 执行 / 战斗
 // 原「合并 / 产出 / 喂草」规则已由数据驱动的 RECIPES 配方表取代（对齐资料库准绳版）
 
-import { META, RECIPES, COMBAT_SEC, foodCapOf } from './config.js';
+import { META, RECIPES, COMBAT_SEC, foodCapOf, COW_BREEDS } from './config.js';
 import { mk, countType, removeCardObj, markSeen, maxStack, spawnNear } from './state.js';
+import * as audio from './audio.js';
 
 export function isFood(type) { return !!(META[type] && META[type].cat === "food"); }
 export function isSellable(type) { return !!(META[type] && META[type].sale > 0); }
+
+// 牛家族：配方 in:{cow:1} 匹配任意品种（yak/bison/buffalo/ox 都算 cow）
+const COW_ALIAS = {};
+COW_BREEDS.forEach(t => { COW_ALIAS[t] = "cow"; });
 
 // ===================== pileAction：解释每堆的行为 =====================
 // 返回 {type, sec, label, recipe} 或 null
@@ -38,7 +43,11 @@ function recipeWeight(r) {
 
 export function matchRecipe(game, p) {
   const cnt = {};
-  p.cards.forEach(c => { cnt[c.type] = (cnt[c.type] || 0) + 1; });
+  p.cards.forEach(c => {
+    // 牛品种归一到家族名，使配方 in:{cow:1} 对任意品种生效
+    const key = COW_ALIAS[c.type] || c.type;
+    cnt[key] = (cnt[key] || 0) + 1;
+  });
   let best = null, bestW = null;
   for (let i = 0; i < RECIPES.length; i++) {
     const r = RECIPES[i];
@@ -68,8 +77,13 @@ function applyRecipe(game, p, r) {
   if (r.consume) {
     for (const k in r.in) {
       if (k === "herder") continue;                       // 牧民永不消耗
-      if (META[k] && META[k].cat === "build") continue;   // 建筑(房屋/兵营/市场)不消耗
-      p.cards = removeN(p.cards, k, r.in[k]);
+      if (META[k] && (META[k].cat === "build" || META[k].cat === "unit")) continue; // 建筑/单位不消耗
+      // 牛家族：消耗任意品种的牛
+      if (COW_ALIAS[k]) {
+        p.cards = removeCow(p.cards, r.in[k]);
+      } else {
+        p.cards = removeN(p.cards, k, r.in[k]);
+      }
     }
   }
   // 产出（堆叠上限保护）
@@ -117,11 +131,12 @@ function applyRecipe(game, p, r) {
     }
   }
   if (r.kind === "equip") {
-    const h2 = p.cards.find(c => c.type === "herder");
-    if (h2) {
-      h2.atkBonus = (h2.atkBonus || 0) + (r.atk || 0);
-      h2.hpBonus = (h2.hpBonus || 0) + (r.hp || 0);
-      toast(game, "🛡️ 装备成功！攻击+" + (r.atk || 0) + " 血量+" + (r.hp || 0));
+    // 装备只给牧羊犬穿戴（牧民不能穿）
+    const dog = p.cards.find(c => c.type === "dog");
+    if (dog) {
+      dog.atkBonus = (dog.atkBonus || 0) + (r.atk || 0);
+      dog.hpBonus = (dog.hpBonus || 0) + (r.hp || 0);
+      toast(game, "🛡️ 牧羊犬装备成功！攻击+" + (r.atk || 0) + " 血量+" + (r.hp || 0));
     }
   }
   if (r.kind === "build") { toast(game, "🔨 建成：" + r.name.replace("建造", "")); }
@@ -142,6 +157,7 @@ function fightStep(game, p) {
   def.hp -= META[monster.type].atk;
   if (monster.hp <= 0) { killMonster(game, p, monster); }
   else if (def.hp <= 0) { removeCardObj(game, def); toast(game, "💀 " + META[def.type].label + " 倒下了"); }
+  else { audio.play("combat.hit"); }
 }
 
 function removeN(cards, type, n) {
@@ -149,11 +165,18 @@ function removeN(cards, type, n) {
   return cards.filter(c => { if (c.type === type && removed < n) { removed++; return false; } return true; });
 }
 
+// 消耗 n 头任意品种的牛
+function removeCow(cards, n) {
+  let removed = 0;
+  return cards.filter(c => { if (COW_ALIAS[c.type] && removed < n) { removed++; return false; } return true; });
+}
+
 function killMonster(game, p, monster) {
   const drop = META[monster.type].drop || 0;
   game.state.gold += drop;
   game.state.stats.kills++;
   removeCardObj(game, monster);
+  audio.play("combat.kill");
   toast(game, "🗡 击败" + META[monster.type].label + "！+¥" + drop);
 }
 

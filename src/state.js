@@ -1,7 +1,7 @@
 // 游戏数据层：全局状态 + 堆(pile)/卡(card) 的增删查改
 // 所有函数都以 game 作为上下文：game.state 持有状态，game.boardSize() 提供棋盘尺寸
 
-import { CARD_W, CARD_H, STACK_OFF, DAY_LEN, META, MAX_STACK } from './config.js';
+import { CARD_W, CARD_H, STACK_OFF, DAY_LEN, META, MAX_STACK, foodCapOf } from './config.js';
 import { rand, clamp } from './utils.js';
 
 export function createState() {
@@ -16,6 +16,7 @@ export function createState() {
     gold: 0,
     drag: null,
     seenCards: {},        // 图鉴：见过的卡 type
+    cardGets: {},         // 图鉴：每种卡累计获取次数（mk 时 +1）
     tasksDone: {},        // 已完成任务 id
     stats: { herders: 0, houses: 0, walls: 0, kills: 0, totalWood: 0, gold: 0, smelters: 0, equipped: 0 },
     nightSpawned: false,  // 本夜是否已刷怪
@@ -26,8 +27,10 @@ export function createState() {
 export function mk(game, type) {
   const c = { id: game.state.nextId++, type };
   if (META[type].hp) c.hp = META[type].hp;
-  if (META[type].cat === "unit") c.fed = 0; // 所有单位（牧民/牧羊犬）都有饱食度
+  if (META[type].cat === "unit") c.fed = foodCapOf(type); // 新单位满饱食，避免"空血"秒饿死
   if (META[type].charges) c.charges = META[type].charges; // 资源点采集次数
+  // 图鉴获取计数：卡包开出/采集产出/建造/繁殖/怪物掉落都走 mk
+  game.state.cardGets[type] = (game.state.cardGets[type] || 0) + 1;
   return c;
 }
 

@@ -5,9 +5,10 @@ import { rand } from './utils.js';
 import { mk, makePile } from './state.js';
 import { render, updateHUD, toast } from './render.js';
 import { buyPack } from './systems.js';
+import * as audio from './audio.js';
 
 function closeModal(game, ov) {
-  if (ov && ov.parentNode) { ov.parentNode.removeChild(ov); }
+  if (ov && ov.parentNode) { ov.parentNode.removeChild(ov); audio.play("ui.close"); }
   // 同步清理单例弹窗记录（若关闭的是当前打开的弹窗）
   if (game && game._openOv === ov) { game._openOv = null; game._openModal = null; }
 }
@@ -16,6 +17,7 @@ function closeModal(game, ov) {
 export function toggleModal(game, type, opener) {
   if (game._openModal === type && game._openOv) { closeModal(game, game._openOv); return; }
   if (game._openOv) closeModal(game, game._openOv);
+  audio.play("ui.open");
   game._openModal = type;
   game._openOv = opener();
   // 防御：opener 必须返回 overlay，否则单例记录失效会重复弹窗
@@ -74,11 +76,15 @@ export function showTasks(game) {
 
 // 卡牌图鉴
 export function showCodex(game) {
+  const gets = game.state.cardGets || {};
   let html = '<h2>📖 卡牌图鉴</h2><p>已发现 ' + Object.keys(game.state.seenCards).length + ' / ' + Object.keys(META).length + ' 种</p><div class="codex-grid">';
   Object.keys(META).forEach(t => {
     const seen = !!game.state.seenCards[t];
     const m = META[t];
-    html += '<div class="codex-cell' + (seen ? "" : " locked") + '"><div class="cc-emoji">' + (seen ? m.emoji : "❓") + '</div>' +
+    const n = gets[t] || 0;
+    html += '<div class="codex-cell' + (seen ? "" : " locked") + '">' +
+      (n > 0 ? '<span class="cc-count">×' + n + '</span>' : '') +
+      '<div class="cc-emoji">' + (seen ? m.emoji : "❓") + '</div>' +
       '<div class="cc-name">' + (seen ? m.label : "未解锁") + '</div></div>';
   });
   html += '</div><button class="close" id="codexClose">关闭</button>';
@@ -143,8 +149,8 @@ export function showRecipes(game) {
     if (list.length === 0) return;
     html += '<h3>' + g.label + '</h3><div class="recipe-list">';
     list.forEach(r => {
-      html += '<div class="recipe-item" id="ri-' + r.id + '"><div class="ri-in">' + fmtCards(r.in) + '</div>' +
-        '<div class="ri-arrow">→</div><div class="ri-out">' + fmtOut(r.out) + '</div>' +
+      html += '<div class="recipe-item" id="ri-' + r.id + '"><div class="ri-out">' + fmtOut(r.out) + '</div>' +
+        '<div class="ri-arrow">←</div><div class="ri-in">' + fmtCards(r.in) + '</div>' +
         '<div class="ri-sec">' + r.sec + 's</div></div>';
     });
     html += '</div>';
@@ -179,10 +185,10 @@ export function showHelp(game) {
     '<li>按住<b>最顶</b>一张 → 只拆出那张。</li></ul>' +
     '<p><b>生产</b>：把 🧑‍🌾牧民 拖到 🌳树木/⛰️岩石/🌿蓝莓丛/🗻铁矿脉/💎金矿脉/🌱药田 上 → 自动产出资源（进度条）。</p>' +
     '<p><b>喂食</b>：把 🫐蓝莓/🍞面包/🍖烤肉/🥗拼盘 拖到 🧑‍🌾牧民 或 🐕牧羊犬 上喂饱（每天每单位消耗 1 餐，否则饿死）。</p>' +
-    '<p><b>自动进食</b>：每天结算时，饱食不足的单位会自动吃 1 个自己偏好的食物——🧑‍🌾牧民吃 🫐蓝莓，🐕牧羊犬吃 🥩生肉；场上没有对应食物才会饿死。</p>' +
+    '<p><b>自动进食</b>：每天结算时，饱食不足的单位会自动吃 1 个自己偏好的食物——🧑‍🌾牧民吃 🫐蓝莓，🐕牧羊犬吃 🥩生肉；没有偏好食物会吃任意食物，全都没有才饿死。</p>' +
     '<p><b>饱食上限</b>：各单位上限不同（牧民 10、牧羊犬 8），喂食/进食都受各自上限约束。</p>' +
     '<p><b>建造</b>：把 2🪵+1🪨 堆到牧民上 → 🏠房屋（可繁殖）；3🪨 → 🧱城墙；更多建筑见卡牌图鉴。</p>' +
-    '<p><b>制作/冶炼/烹饪</b>：牧民+材料 可造 🗡️木剑/🛡️盾/⚒️工具（产物掉落在旁边，需手动拖到牧民身上装备）；建 🔥冶炼厂 后炼铁锭；建 🍳厨房 后烤肉做面包。全部配方见「⚗️合成」。</p>' +
+    '<p><b>制作/冶炼/烹饪</b>：牧民+材料 可造 🗡️木剑/🛡️盾/⚒️工具（产物掉落在旁边，需手动拖到 🐕牧羊犬 身上装备）；建 🔥冶炼厂 后炼铁锭；建 🍳厨房 后烤肉做面包。全部配方见「⚗️合成」。</p>' +
     '<p><b>繁殖</b>：🏠房屋 + 2🧑‍🌾牧民 同堆 → 自动生出小牧民（房屋冷却 120 秒）。</p>' +
     '<p><b>战斗</b>：🌙夜晚刷 🥷小偷/👹大盗，会自动扑向牧民；把 🐕牧羊犬/牧民 拖到怪物上迎战，击杀掉落金币。</p>' +
     '<p><b>赚钱</b>：把可卖的卡（🪵🪨⚙️…）拖到 🏪市场 换金币，再去 🎁卡包 抽新卡。</p>' +
@@ -194,13 +200,48 @@ export function showHelp(game) {
 
 // 设置
 export function showSettings(game) {
+  const a = audio.getAudioSettings();
+  const volPct = Math.round((a.master || 0) * 100);
+  const sfxChecked = a.sfxOn ? "checked" : "";
+  const musicChecked = a.musicOn ? "checked" : "";
   const ov = openModal(game,
     '<h2>⚙️ 设置</h2>' +
     '<p>当前进度已自动保存。</p>' +
+    '<div class="set-block">' +
+    '<div class="set-row"><span class="set-label">🔊 音量</span>' +
+    '<input type="range" id="volRange" min="0" max="100" value="' + volPct + '" class="set-range" />' +
+    '<span class="set-val" id="volVal">' + volPct + '%</span></div>' +
+    '<div class="set-row"><span class="set-label">🎵 音效</span>' +
+    '<label class="set-toggle"><input type="checkbox" id="sfxToggle" ' + sfxChecked + ' /><span class="set-slider"></span></label></div>' +
+    '<div class="set-row"><span class="set-label">🎼 背景音乐</span>' +
+    '<label class="set-toggle"><input type="checkbox" id="musicToggle" ' + musicChecked + ' /><span class="set-slider"></span></label></div>' +
+    '</div>' +
     '<div class="row">' +
+    '<button class="btn alt" id="testGoldBtn">💰 测试 +1000</button>' +
     '<button class="btn alt" id="resetBtn">🗑 重置存档</button>' +
     '<button class="close" id="closeSet">关闭</button>' +
     '</div>');
+  // 主音量滑杆
+  const volRange = document.getElementById("volRange");
+  const volVal = document.getElementById("volVal");
+  volRange.oninput = function () {
+    const v = parseInt(this.value, 10) / 100;
+    volVal.textContent = Math.round(v * 100) + "%";
+    audio.setMasterVolume(v);
+  };
+  // 音效开关
+  document.getElementById("sfxToggle").onchange = function () { audio.setSfxOn(this.checked); };
+  // 音乐开关
+  document.getElementById("musicToggle").onchange = function () { audio.setMusicOn(this.checked); };
+  // 测试按钮：+1000 金币（仅开发/测试用）
+  document.getElementById("testGoldBtn").onclick = function () {
+    if (game.state.gameOver) return;
+    game.state.gold += 1000;
+    game.state.stats.gold = game.state.gold;
+    updateHUD(game);
+    audio.play("money.sell");
+    toast(game, "💰 测试金币 +1000（现有 ¥" + game.state.gold + "）");
+  };
   document.getElementById("resetBtn").onclick = function () { game.resetGame(); };
   document.getElementById("closeSet").onclick = function () { closeModal(game, ov); };
   return ov;

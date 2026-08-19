@@ -153,13 +153,17 @@ body{
 .packobj .pn{font-size:12px;font-weight:800;margin-top:5px;color:#7a5300;}
 .packobj:active{transform:scale(.94) translate(1px,1px);box-shadow:0 0 0 rgba(0,0,0,0);}
 
-/* —— 市场：手绘招牌 —— */
-#market{ position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
-  background:rgba(255,250,230,.95); color:#7a5300;
+/* —— 市场：卡片式出售框（右下角，比普通卡片 72×90 长宽各 +10px = 82×100） —— */
+#market{ position:absolute; right:10px; bottom:12px;
+  width:82px; height:100px; color:var(--ink);
+  background:rgba(255,250,230,.95); background-image:var(--paper-noise);
   border:2.5px solid #d9a400; border-radius:16px 13px 18px 14px / 14px 18px 13px 16px;
-  padding:7px 15px 9px; font-weight:800; font-size:13px; pointer-events:none;
-  display:flex; align-items:center; gap:6px; box-shadow:3px 3px 0 rgba(120,90,0,.25); z-index:5;}
-#app.night #market{background:rgba(40,52,90,.95);color:#ffe9a8;border-color:#e0b700;box-shadow:3px 3px 0 rgba(0,0,0,.4);}
+  box-shadow:4px 4px 0 rgba(120,90,0,.28);
+  font-weight:800; font-size:11px; pointer-events:none;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:3px; z-index:5;}
+#market .m-emoji{font-size:30px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.15));}
+#app.night #market{background:rgba(40,52,90,.95);color:#ffe9a8;border-color:#e0b700;box-shadow:4px 4px 0 rgba(0,0,0,.4);}
 #toast{position:absolute;left:50%;top:12px;transform:translateX(-50%);
   background:rgba(45,40,30,.88); color:#fff; padding:7px 14px 9px;
   border-radius:12px 10px 13px 11px / 11px 13px 10px 12px;
@@ -274,3 +278,36 @@ body{
 .recipe-item.flash{animation:riFlash .9s ease 2;}
 @keyframes riFlash{0%,100%{background:rgba(255,255,255,.55);}
   50%{background:#d9f2c8;box-shadow:0 0 0 2px var(--green-3);}}
+
+/* 夜晚来临前 10 秒：timer 放大警示 */
+#timer{transition:transform .2s;}
+#timer.night-warn{animation:timerWarn .6s ease-in-out infinite;color:#e03a2b;}
+#app.night #timer.night-warn{color:#ff6b5e;}
+@keyframes timerWarn{0%,100%{transform:scale(1.25);}50%{transform:scale(1.5);}}
+
+/* 设置面板：音量滑杆 + 开关 */
+.set-block{display:flex;flex-direction:column;gap:12px;margin:14px 0;}
+.set-row{display:flex;align-items:center;gap:10px;}
+.set-label{flex:0 0 96px;font-weight:800;font-size:13.5px;}
+.set-range{flex:1;accent-color:var(--green-4);height:22px;cursor:pointer;}
+.set-val{flex:0 0 42px;text-align:right;font-size:12.5px;color:#7a715c;font-weight:700;}
+.set-toggle{position:relative;display:inline-block;width:48px;height:26px;flex:0 0 auto;}
+.set-toggle input{opacity:0;width:0;height:0;position:absolute;}
+.set-toggle .set-slider{position:absolute;inset:0;background:#c9c2ae;border-radius:14px;
+  transition:background .2s;cursor:pointer;box-shadow:inset 0 1px 3px rgba(0,0,0,.2);}
+.set-toggle .set-slider::before{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;
+  background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+.set-toggle input:checked + .set-slider{background:var(--green-4);}
+.set-toggle input:checked + .set-slider::before{transform:translateX(22px);}
+
+/* 牛品种稀有度星标 */
+.cow-r1{color:#7a8a5a;}   /* ★ 普通 */
+.cow-r2{color:#c08a1a;}   /* ★★ 稀有 */
+.cow-r3{color:#b05ad0;}   /* ★★★ 史诗 */
+
+/* 图鉴获取次数徽标 */
+.codex-cell{position:relative;}
+.cc-count{position:absolute;top:-4px;right:-4px;background:var(--green-4);color:#fff;
+  font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;
+  box-shadow:1px 1px 0 rgba(0,0,0,.2);font-family:var(--font-num);}
+.codex-cell.locked .cc-count{background:#999;}
