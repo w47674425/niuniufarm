@@ -4,7 +4,7 @@ import { createState, makePile, removePile, mk, scatter } from './state.js';
 import { render, updateHUD, toast, renderPack, bindTaskCheck } from './render.js';
 import { bindDrag } from './drag.js';
 import { tick, loadGame, saveGame, checkTasks } from './systems.js';
-import { showShop, showTasks, showCodex, showHelp, showSettings } from './modals.js';
+import { showShop, showTasks, showCodex, showRecipes, showHelp, showSettings, toggleModal } from './modals.js';
 import { bindToast } from './merge.js';
 import { TICK_MS, SAVE_KEY, foodCapOf } from './config.js';
 
@@ -35,11 +35,12 @@ export class Game {
       this.state.paused = !this.state.paused;
       this.refs.pauseBtn.textContent = this.state.paused ? "▶" : "⏸";
     };
-    this.refs.packBtn.onclick = () => { if (!this.state.gameOver) showShop(this); };
-    this.refs.taskBtn.onclick = () => { if (!this.state.gameOver) showTasks(this); };
-    this.refs.codexBtn.onclick = () => showCodex(this);
-    this.refs.helpBtn.onclick = () => showHelp(this);
-    this.refs.setBtn.onclick = () => showSettings(this);
+    this.refs.packBtn.onclick = () => { if (!this.state.gameOver) toggleModal(this, "shop", () => showShop(this)); };
+    this.refs.taskBtn.onclick = () => { if (!this.state.gameOver) toggleModal(this, "tasks", () => showTasks(this)); };
+    this.refs.codexBtn.onclick = () => toggleModal(this, "codex", () => showCodex(this));
+    this.refs.recipeBtn.onclick = () => toggleModal(this, "recipes", () => showRecipes(this));
+    this.refs.helpBtn.onclick = () => toggleModal(this, "help", () => showHelp(this));
+    this.refs.setBtn.onclick = () => toggleModal(this, "settings", () => showSettings(this));
     window.addEventListener("beforeunload", () => saveGame(this));
 
     // 开局：读档或新手卡包

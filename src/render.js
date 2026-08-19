@@ -78,15 +78,21 @@ export function render(game) {
       el.style.left = x + "px"; el.style.top = y + "px";
       el.style.zIndex = (pi * 20 + ci);
       el.setAttribute("data-id", c.id);
+      // 手绘贴纸感：基于卡 id 生成稳定小角度旋转（±3°），拖拽缩放通过 CSS 变量组合
+      el.style.setProperty("--rot", (((c.id * 37) % 7) - 3) + "deg");
       let html = '<div class="ce">' + meta.emoji + '</div><div class="cn">' + meta.label + '</div>';
       if (meta.cat === "mon" || (meta.atk && (c.type === "herder" || c.type === "dog"))) {
         const hpc = c.hp != null ? c.hp : meta.hp;
         const max = meta.hp;
         const pct = clamp(Math.round(hpc / max * 100), 0, 100);
         html += '<div class="hpbar"><div class="hpfill" style="width:' + pct + '%"></div></div>';
-        if (c.type === "herder" && (c.atkBonus || 0) > 0) {
-          html += '<div class="cb">⚔️+' + (c.atkBonus || 0) + '</div>';
-        }
+      }
+      // 单位直接显示属性：⚔️攻击(含加成) ❤️血量(当前/上限)
+      if (meta.cat === "unit") {
+        const atk = (meta.atk || 0) + (c.atkBonus || 0);
+        const cur = c.hp != null ? c.hp : (meta.hp || 0);
+        const max2 = (meta.hp || 0) + (c.hpBonus || 0);
+        html += '<div class="cb">⚔️' + atk + ' ❤️' + cur + '/' + max2 + '</div>';
       }
       // 所有单位显示饱食度（上限取该单位自身配置）
       if (meta.cat === "unit" && c.fed != null) {
@@ -110,10 +116,9 @@ export function renderPack(game, pack) {
   if (old) old.remove();
   const el = document.createElement("div");
   el.className = "packobj";
-  el.style.cssText = "position:absolute;width:80px;height:96px;border-radius:16px;background:linear-gradient(180deg,#fff,#fff3cf);border:2px solid var(--gold);box-shadow:0 4px 10px rgba(0,0,0,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;user-select:none;text-align:center;z-index:6;";
-  el.innerHTML = '<div style="font-size:34px">🎁</div><div style="font-size:12px;font-weight:800;margin-top:4px">新手卡包</div>';
   el.style.left = pack.x + "px";
   el.style.top = pack.y + "px";
+  el.innerHTML = '<div class="pe">🎁</div><div class="pn">新手卡包</div>';
   // 打开逻辑统一由 onDown 处理（已在其中识别 .packobj）；这里保留 onclick 作为兜底
   el.onclick = function () { if (pack._open) pack._open(); };
   board.appendChild(el);

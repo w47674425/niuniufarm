@@ -74,8 +74,9 @@ function applyRecipe(game, p, r) {
   }
   // 产出（堆叠上限保护）
   if (r.kind === "produce" && p.cards.length >= maxStack(game)) { return; }
-  // 采集/生产类配方：生成物掉落到附近空白处（spawnNear + 掉落动画）
-  if (r.kind === "produce") {
+  // 采集/生产/制作类配方：生成物掉落到附近空白处（spawnNear + 掉落动画）
+  // craft 类产物掉落而非叠入原堆，避免装备/工具卡被「牧民直接吃掉」（即时触发 equip）
+  if (r.kind === "produce" || r.kind === "craft") {
     const outCards = [];
     r.out.forEach(o => { for (let i = 0; i < o.n; i++) outCards.push(mk(game, o.type)); });
     outCards.forEach(c => { markSeen(game, c.type); if (c.type === "wood") game.state.stats.totalWood++; });

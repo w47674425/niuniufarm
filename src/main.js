@@ -17,6 +17,7 @@ const refs = {
   packBtn: document.getElementById('packBtn'),
   taskBtn: document.getElementById('taskBtn'),
   codexBtn: document.getElementById('codexBtn'),
+  recipeBtn: document.getElementById('recipeBtn'),
   helpBtn: document.getElementById('helpBtn'),
   setBtn: document.getElementById('setBtn')
 };

@@ -51,7 +51,6 @@ herbfield:{cat:"node", emoji:"🌱", label:"药田", note:"牧民→药草", sal
   pickaxe:   {cat:"item", emoji:"⛏️", label:"镐子", sale:5},
   torch:     {cat:"item", emoji:"🔥", label:"火把", sale:2},
   potion:    {cat:"item", emoji:"🧪", label:"治疗药水", sale:6},
-  blueprint: {cat:"item", emoji:"📜", label:"冶炼厂图纸", sale:0},
   // —— 食物 ——
   blueberry:  {cat:"food", emoji:"🫐", label:"蓝莓", food:1, sale:1},
   bread:      {cat:"food", emoji:"🍞", label:"面包", food:3, sale:2},
@@ -59,7 +58,7 @@ herbfield:{cat:"node", emoji:"🌱", label:"药田", note:"牧民→药草", sal
   fruitplatter:{cat:"food", emoji:"🥗", label:"果蔬拼盘", food:3, sale:6},
   // —— 建筑 ——
   house:     {cat:"build", emoji:"🏠", label:"房屋", note:"人口+繁殖", sale:0},
-  farm:      {cat:"build", emoji:"🏡", label:"农场", note:"牧民→小麦×2", sale:0},
+  farm:      {cat:"build", emoji:"🌾", label:"麦田", note:"牧民→小麦×2", sale:0},
   lumberyard:{cat:"build", emoji:"🪓", label:"伐木场", note:"牧民→木头×3", sale:0},
   quarry:    {cat:"build", emoji:"⚒️", label:"采石场", note:"牧民→石头×3", sale:0},
   smelter:   {cat:"build", emoji:"🔥", label:"冶炼厂", note:"冶炼铁/金锭", sale:0},
@@ -71,23 +70,25 @@ herbfield:{cat:"node", emoji:"🌱", label:"药田", note:"牧民→药草", sal
   // —— 牲畜 ——
   pig:   {cat:"life", emoji:"🐷", label:"猪", note:"牧民→生肉×3", sale:15},
   sheep: {cat:"life", emoji:"🐑", label:"绵羊", note:"+兵营→牧羊犬", sale:15},
+  cow:   {cat:"life", emoji:"🐮", label:"牛", note:"牧民→生肉×5", sale:30},
   // —— 怪物（夜间刷新）——
   thief: {cat:"mon", emoji:"🥷", label:"小偷", atk:1, hp:6, drop:8, sale:0},
   bandit:{cat:"mon", emoji:"👹", label:"大盗", atk:4, hp:16, drop:20, sale:0}
 };
 
-// 卡包定义
+// 卡包定义（2026-08-19 重构：基础/牧场/动物/植物/建筑）
+// 动物、植物卡包价格用户未给，暂按梯度推断 [PLACEHOLDER·待确认]
 export const PACKS = [
   {id:"basic", name:"基础卡包", emoji:"📦", price:10,
-    desc:"牧民/资源/食物/犬", items:[["herder",2],["dog",1],["bush",1],["tree",1],["rock",1],["blueberry",2],["wood",2]]},
-  {id:"build", name:"建造卡包", emoji:"🏗️", price:25,
-    desc:"建材/树枝/工具", items:[["wood",4],["stone",4],["branch",2],["axe",1]]},
-  {id:"ranch", name:"牧场卡包", emoji:"🐮", price:30,
-    desc:"牲畜/作物", items:[["pig",1],["sheep",1],["wheat",2]]},
-  {id:"smith", name:"冶炼卡包", emoji:"⚒️", price:50,
-    desc:"矿石/药草/图纸", items:[["iron",1],["gold",1],["herb",2],["blueprint",1]]},
-  {id:"rare", name:"稀有卡包", emoji:"💎", price:60,
-    desc:"铁矿/药水/烤肉", items:[["iron",1],["potion",1],["cookedmeat",2],["ironsword",1]]}
+    desc:"蓝莓丛/树木/岩石", items:[["bush",1],["tree",1],["rock",1]]},
+  {id:"ranch", name:"牧场卡包", emoji:"🐮", price:20,
+    desc:"牧民/牧羊犬", items:[["herder",1],["dog",1]]},
+  {id:"animal", name:"动物卡包", emoji:"🐑", price:25, // [PLACEHOLDER·价格待确认]
+    desc:"绵羊/牛/猪", items:[["sheep",1],["cow",1],["pig",1]]},
+  {id:"plant", name:"植物卡包", emoji:"🌾", price:15, // [PLACEHOLDER·价格待确认]
+    desc:"麦田/药田", items:[["farm",1],["herbfield",1]]},
+  {id:"building", name:"建筑卡包", emoji:"🏗️", price:30,
+    desc:"铁矿脉/金矿脉", items:[["iron",1],["gold",1]]}
 ];
 
 // 任务定义
@@ -128,7 +129,7 @@ export const RECIPES = [
   {id:"build_farm", name:"建造农场", in:{herder:1, wood:3, stone:1}, out:[{type:"farm",n:1}], sec:20, consume:true, kind:"build", label:"🏡 建造中"},
   {id:"build_lumberyard", name:"建造伐木场", in:{herder:1, wood:4, stone:1}, out:[{type:"lumberyard",n:1}], sec:20, consume:true, kind:"build", label:"🪓 建造中"},
   {id:"build_quarry", name:"建造采石场", in:{herder:1, wood:2, stone:3}, out:[{type:"quarry",n:1}], sec:20, consume:true, kind:"build", label:"⚒️ 建造中"},
-  {id:"build_smelter", name:"建造冶炼厂", in:{herder:1, wood:2, stone:4, blueprint:1}, out:[{type:"smelter",n:1}], sec:25, consume:true, kind:"build", label:"🔥 建造中"},
+  {id:"build_smelter", name:"建造冶炼厂", in:{herder:1, wood:2, stone:4}, out:[{type:"smelter",n:1}], sec:25, consume:true, kind:"build", label:"🔥 建造中"},
   {id:"build_kitchen", name:"建造厨房", in:{herder:1, wood:2, stone:2}, out:[{type:"kitchen",n:1}], sec:18, consume:true, kind:"build", label:"🍳 建造中"},
   {id:"build_warehouse", name:"建造仓库", in:{herder:1, wood:4, stone:2}, out:[{type:"warehouse",n:1}], sec:22, consume:true, kind:"build", label:"📦 建造中"},
   {id:"build_wall", name:"建造城墙", in:{herder:1, stone:3}, out:[{type:"wall",n:1}], sec:12, consume:true, kind:"build", label:"🧱 建造中"},
@@ -137,7 +138,7 @@ export const RECIPES = [
   // —— 制作（手工）——
   {id:"craft_wooden_sword", name:"制作木剑", in:{herder:1, branch:2}, out:[{type:"sword",n:1}], sec:5, consume:true, kind:"craft", label:"🗡️ 制作中"},
   {id:"craft_iron_sword", name:"制作铁剑", in:{herder:1, ironingot:1, branch:1}, out:[{type:"ironsword",n:1}], sec:10, consume:true, kind:"craft", need:"smelter", label:"⚔️ 制作中"},
-  {id:"craft_wooden_shield", name:"制作木盾", in:{herder:1, wood:2}, out:[{type:"woodshield",n:1}], sec:6, consume:true, kind:"craft", label:"🛡️ 制作中"},
+  {id:"craft_wooden_shield", name:"制作木盾", in:{herder:1, branch:3}, out:[{type:"woodshield",n:1}], sec:6, consume:true, kind:"craft", label:"🛡️ 制作中"},
   {id:"craft_iron_shield", name:"制作铁盾", in:{herder:1, ironingot:2, wood:1}, out:[{type:"ironshield",n:1}], sec:12, consume:true, kind:"craft", need:"smelter", label:"🪖 制作中"},
   {id:"craft_axe", name:"制作斧头", in:{herder:1, wood:1, stone:1}, out:[{type:"axe",n:1}], sec:6, consume:true, kind:"craft", label:"🪓 制作中"},
   {id:"craft_pickaxe", name:"制作镐子", in:{herder:1, wood:1, stone:2}, out:[{type:"pickaxe",n:1}], sec:6, consume:true, kind:"craft", label:"⛏️ 制作中"},
@@ -153,6 +154,7 @@ export const RECIPES = [
   {id:"cook_platter", name:"果蔬拼盘", in:{herder:1, blueberry:3, herb:1}, out:[{type:"fruitplatter",n:1}], sec:10, consume:true, kind:"cook", need:"kitchen", label:"🥗 拼盘中"},
   // —— 宰杀 / 繁殖 / 训练 ——
   {id:"slaughter_pig", name:"宰杀猪", in:{herder:1, pig:1}, out:[{type:"rawmeat",n:3}], sec:3, consume:true, kind:"slaughter", label:"🔪 宰杀中"},
+  {id:"slaughter_cow", name:"宰杀牛", in:{herder:1, cow:1}, out:[{type:"rawmeat",n:5}], sec:4, consume:true, kind:"slaughter", label:"🔪 宰杀中"},
   {id:"breed_baby", name:"繁殖", in:{herder:2, house:1}, out:[{type:"herder",n:1}], sec:10, consume:true, kind:"breed", cooldown:120, label:"👶 繁殖中"},
   {id:"train_dog", name:"训练牧羊犬", in:{herder:1, sheep:1, kennel:1}, out:[{type:"dog",n:1}], sec:15, consume:true, kind:"train", label:"🐕 训练中"},
   // —— 建筑生产（被动，建筑已建好后的自动产出）——
