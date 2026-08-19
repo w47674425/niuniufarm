@@ -33,6 +33,8 @@ export function tick(game) {
   });
   // 怪物移动与交战
   moveMonsters(game);
+  // 每 tick 刷新 HUD（timer 倒计时持续走动，无动作时也不再卡住）
+  updateHUD(game);
   // 自动保存
   if (game._tickCount === undefined) game._tickCount = 0;
   game._tickCount++;
