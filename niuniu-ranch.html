@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html data-page-node-id="jOrDwKIHhcYFlV3IicaxBr" lang="zh-CN">
+<head data-page-node-id="L4RhCpJjFoCbO7qU6Rzc8Z">
+<script data-page-node-id="fZkwHLQ5WUC5xqK8uqz5wf" src="/page/page_comm/inject.js"></script>
+<meta data-page-node-id="yWYH8Nvi0N3vv7d0f7S9Tg" charset="UTF-8">
+<meta data-page-node-id="YyqNLwgabfwB0xnfZpBx1D" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport">
+<title data-page-node-id="jFFp3xb65ukRnxpdSnVtJR" data-pnid-children="oJ18zm4SbN6RReUWG9OO8M">牛牛牧场</title>
+<style data-page-node-id="X4Asy0wtn1x0uIzAW0DQgw" data-pnid-children="IQtWmo44XGUvs6dnO0UmKt">
+  :root{
+    --green-1:#cdefb6; --green-2:#9bdd86; --green-3:#6fc95a; --green-4:#4ea83f;
+    --card-bg:#fffdf6; --card-border:#d9c89a; --ink:#36472b; --gold:#f2b705;
+    --night-1:#2b3a5e; --night-2:#1f2c49; --night-3:#15203a;
+    --cat-unit:#ffe0b3; --cat-res:#e8e0c8; --cat-food:#ffd6d6; --cat-build:#cfe3ff;
+    --cat-life:#d9f7d0; --cat-tech:#e9d6ff; --cat-mon:#ffd0d0;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{
+    font-family:"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+    color:var(--ink); display:flex; justify-content:center; align-items:stretch;
+    overflow:hidden; background:#222;
+  }
+  #app{
+    position:relative; width:100%; max-width:480px; height:100%;
+    display:flex; flex-direction:column; overflow:hidden;
+    background:linear-gradient(180deg,var(--green-1),var(--green-2) 55%,var(--green-3));
+    transition:background .8s;
+  }
+  #app.night{ background:linear-gradient(180deg,var(--night-1),var(--night-2) 55%,var(--night-3)); }
+  #topbar{
+    flex:0 0 auto; display:flex; align-items:center; gap:6px;
+    padding:7px 8px; background:rgba(255,255,255,.6);
+    backdrop-filter:blur(4px); border-bottom:2px solid rgba(255,255,255,.5);
+    flex-wrap:wrap;
+  }
+  #topbar.night{ background:rgba(20,30,55,.7); color:#eaf0ff; border-bottom-color:rgba(120,150,220,.4); }
+  .stat{display:flex;align-items:center;gap:3px;font-weight:700;font-size:13px;
+    background:#fff;padding:3px 7px;border-radius:11px;border:1px solid var(--card-border);white-space:nowrap;}
+  #topbar.night .stat{background:#26335a;color:#eaf0ff;border-color:#3a4d7a;}
+  #dayStat{font-size:14px;}
+  #phaseTag{font-size:12px;padding:3px 7px;border-radius:11px;font-weight:800;}
+  #phaseTag.day{background:#fff2c2;color:#9a6b00;}
+  #phaseTag.night{background:#2c3a63;color:#cfe0ff;}
+  #timer{font-variant-numeric:tabular-nums;color:#c0392b;font-weight:800;}
+  #topbar.night #timer{color:#ff9a9a;}
+  .spacer{margin-left:auto;}
+  .iconbtn{cursor:pointer;border:none;background:#fff;border:1px solid var(--card-border);
+    border-radius:11px;padding:3px 8px;font-size:13px;font-weight:700;color:var(--ink);}
+  #topbar.night .iconbtn{background:#26335a;color:#eaf0ff;border-color:#3a4d7a;}
+  .iconbtn:active{transform:scale(.94);}
+
+  #board{ position:relative; flex:1 1 auto; margin:6px; border-radius:18px;
+    border:3px dashed rgba(255,255,255,.55); overflow:hidden; touch-action:none;
+    background:radial-gradient(circle at 15% 85%, rgba(255,255,255,.25) 0 13%, transparent 14%),
+              radial-gradient(circle at 82% 70%, rgba(255,255,255,.20) 0 11%, transparent 12%); }
+  #app.night #board{ border-color:rgba(150,180,255,.4);
+    background:radial-gradient(circle at 15% 85%, rgba(120,150,230,.18) 0 13%, transparent 14%),
+              radial-gradient(circle at 82% 70%, rgba(120,150,230,.14) 0 11%, transparent 12%); }
+
+  .card{ position:absolute; width:72px; height:90px; border-radius:14px;
+    background:var(--card-bg); border:2px solid var(--card-border);
+    box-shadow:0 4px 8px rgba(0,0,0,.18); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; cursor:grab; user-select:none;
+    text-align:center; padding:3px; transition:box-shadow .1s; }
+  .card.dragging{cursor:grabbing; box-shadow:0 10px 18px rgba(0,0,0,.35); z-index:900!important;}
+  .card .ce{font-size:30px;line-height:1;}
+  .card .cn{font-size:11.5px;font-weight:800;margin-top:3px;line-height:1.1;}
+  .card .cb{font-size:9px;color:#8a7a4a;margin-top:2px;line-height:1.1;}
+  #app.night .card .cb{color:#b9a87a;}
+  .card .hpbar{position:absolute;left:6px;right:6px;bottom:5px;height:5px;background:#e3d6b0;border-radius:3px;overflow:hidden;}
+  .card .hpfill{height:100%;background:#5bc14a;width:100%;}
+  .card.cat-unit{background:linear-gradient(180deg,var(--cat-unit),#fffdf6);border-color:#e0a85a;}
+  .card.cat-res{background:linear-gradient(180deg,var(--cat-res),#fffdf6);border-color:#b9ad84;}
+  .card.cat-food{background:linear-gradient(180deg,var(--cat-food),#fffdf6);border-color:#e08a8a;}
+  .card.cat-build{background:linear-gradient(180deg,var(--cat-build),#fffdf6);border-color:#7aa6e0;}
+  .card.cat-life{background:linear-gradient(180deg,var(--cat-life),#fffdf6);border-color:#7ac46a;}
+  .card.cat-tech{background:linear-gradient(180deg,var(--cat-tech),#fffdf6);border-color:#a87ae0;}
+  .card.cat-node{background:linear-gradient(180deg,#d7f0c8,#fffdf6);border-color:#7ab86a;}
+  .card.cat-item{background:linear-gradient(180deg,var(--cat-tech),#fffdf6);border-color:#a87ae0;}
+  .card.cat-mon{background:linear-gradient(180deg,var(--cat-mon),#fffdf6);border-color:#e05a5a;}
+
+  #bottombar{ flex:0 0 auto; display:flex; gap:8px; padding:8px 10px 12px;
+    background:rgba(255,255,255,.55); border-top:2px solid rgba(255,255,255,.5); }
+  #app.night #bottombar{ background:rgba(20,30,55,.7); border-top-color:rgba(120,150,220,.4); }
+  .navbtn{ flex:1; background:#fff; border:2px solid var(--card-border); border-radius:14px;
+    padding:6px 4px; text-align:center; cursor:pointer; font-weight:800; font-size:12px; color:var(--ink);}
+  #app.night .navbtn{background:#26335a;color:#eaf0ff;border-color:#3a4d7a;}
+  .navbtn .ne{font-size:20px;display:block;}
+  .navbtn:active{transform:scale(.95);}
+  .navbtn .badge{position:absolute;}
+
+  #market{ position:absolute; left:50%; bottom:8px; transform:translateX(-50%);
+    background:rgba(255,255,255,.92); border:2px solid #c98f00; border-radius:16px;
+    padding:7px 14px; font-weight:800; font-size:13px; pointer-events:none;
+    display:flex; align-items:center; gap:6px; box-shadow:0 3px 8px rgba(0,0,0,.15); z-index:5;}
+  #app.night #market{background:rgba(40,52,90,.95);color:#ffe9a8;border-color:#e0b700;}
+  #toast{position:absolute;left:50%;top:12px;transform:translateX(-50%);
+    background:rgba(0,0,0,.8);color:#fff;padding:7px 13px;border-radius:14px;
+    font-size:13px;font-weight:700;opacity:0;transition:opacity .25s;pointer-events:none;z-index:1500;max-width:90%;text-align:center;}
+  #toast.show{opacity:1;}
+  .progress{position:absolute;z-index:1000;background:rgba(0,0,0,.62);border-radius:10px;
+    padding:4px 6px;width:96px;}
+  .progress .pt{color:#fff;font-size:10px;font-weight:800;margin-bottom:2px;text-align:center;}
+  .progress .ptrack{height:7px;background:#fff;border-radius:5px;overflow:hidden;}
+  .progress .pbar{height:100%;width:0;background:var(--green-4);}
+  #app.night .progress .pbar{background:#6f9bff;}
+  .pileprog{position:absolute;z-index:30;background:rgba(0,0,0,.6);border-radius:9px;
+    padding:3px 5px;width:84px;pointer-events:none;}
+  .pileprog .pp-label{color:#fff;font-size:9.5px;font-weight:800;margin-bottom:2px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .pileprog .pp-track{height:6px;background:#fff;border-radius:4px;overflow:hidden;}
+  .pileprog .pp-fill{height:100%;width:0;background:var(--green-4);}
+  #app.night .pileprog .pp-fill{background:#6f9bff;}
+  #app.night .progress .pbar{background:#6f9bff;}
+
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;
+    align-items:center;justify-content:center;z-index:2000;padding:16px;}
+  .modal{background:#fff;border-radius:18px;max-width:420px;width:100%;max-height:88%;
+    overflow:auto;padding:18px;box-shadow:0 12px 30px rgba(0,0,0,.3);}
+  .modal h2{margin:0 0 10px;font-size:18px;}
+  .modal p,.modal li{font-size:13.5px;line-height:1.6;}
+  .modal .close{margin-top:12px;display:inline-block;background:var(--green-4);color:#fff;
+    border:none;border-radius:12px;padding:8px 16px;font-weight:800;cursor:pointer;font-size:14px;}
+  .modal .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
+  .modal .btn{flex:1;min-width:120px;background:var(--green-4);color:#fff;border:none;
+    border-radius:12px;padding:10px;font-weight:800;font-size:14px;cursor:pointer;}
+  .modal .btn.alt{background:#888;}
+  .modal .btn.gold{background:var(--gold);color:#5a3e00;}
+  .shop-item{display:flex;align-items:center;gap:10px;padding:9px;border:1px solid var(--card-border);
+    border-radius:12px;margin-bottom:8px;}
+  .shop-item .si-emoji{font-size:26px;}
+  .shop-item .si-info{flex:1;}
+  .shop-item .si-name{font-weight:800;font-size:14px;}
+  .shop-item .si-desc{font-size:11.5px;color:#777;}
+  .shop-item .si-buy{background:var(--gold);color:#5a3e00;border:none;border-radius:10px;
+    padding:7px 12px;font-weight:800;cursor:pointer;white-space:nowrap;}
+  .task-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #eee;font-size:13px;}
+  .task-item .t-check{width:20px;height:20px;border-radius:50%;border:2px solid #bbb;flex:0 0 auto;}
+  .task-item.done .t-check{background:var(--green-4);border-color:var(--green-4);color:#fff;text-align:center;font-size:12px;line-height:16px;}
+  .task-item.done .t-name{color:#999;text-decoration:line-through;}
+  .task-item .t-rew{margin-left:auto;color:#c0392b;font-weight:700;font-size:12px;}
+  .codex-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px;}
+  .codex-cell{text-align:center;border:1px solid #eee;border-radius:10px;padding:6px 2px;}
+  .codex-cell .cc-emoji{font-size:24px;}
+  .codex-cell .cc-name{font-size:10.5px;font-weight:700;margin-top:2px;}
+  .codex-cell.locked{opacity:.35;}
+  .adbox{text-align:center;}
+  .adbox .spinner{margin:18px auto;width:46px;height:46px;border:5px solid #eee;
+    border-top-color:var(--green-4);border-radius:50%;animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  #nightVignette{position:absolute;inset:0;pointer-events:none;z-index:4;
+    box-shadow:inset 0 0 90px 30px rgba(10,18,40,.55);opacity:0;transition:opacity .8s;}
+  #app.night #nightVignette{opacity:1;}
+</style>
+</head>
+<body data-page-node-id="ftloTPQvdrBkGV3xV4dK4n">
+<div data-page-node-id="cRi3lUm6sdwhSenur2EV2q" id="app">
+  <div data-page-node-id="RGKaKiuq9asf2SHgHsE5Rl" id="topbar">
+    <div data-page-node-id="9t8m3XccuhCFyrSZaV8fwf" class="stat" id="dayStat"><!--pnid:EUu3jriBzoo8u0OCX6X7lM-->第 1 天</div>
+    <div data-page-node-id="IQHwrhlklpFl8o9rnTn77X" class="stat" id="phaseTag"><!--pnid:wZ4fm0jEIdo7dEFMpYfM62-->☀️ 白天</div>
+    <div data-page-node-id="kt1EVv1fuG7k3ztUDZsVZ9" class="stat" id="timer"><!--pnid:ioCdwrKWV6F3gvBzalFj9s-->01:30</div>
+    <div data-page-node-id="z2gT02xGWqXfdTGcB0FExh" class="stat" id="goldStat"><!--pnid:MKUvWKK5OLRGFuHaDBmZlw-->💰 ¥0</div>
+    <div data-page-node-id="Wnuyin7ooV5nenBfZrE2Kh" class="stat" id="popStat"><!--pnid:SKtTOKdGz7KJ22G1LsNQHe-->🧑 0/0</div>
+    <div data-page-node-id="NMCyDBIOLqs4fFZ9HEZP4L" class="stat" id="foodStat"><!--pnid:tfQ9ygi65eSwuBgvacBJ3N-->🍖 0</div>
+    <button data-page-node-id="sOI4R3K0oAHTs9lVapYDoG" class="iconbtn" id="pauseBtn"><!--pnid:GEv00oPBiuzEmnzMwjGREs-->⏸</button>
+  </div>
+  <div data-page-node-id="FJUN8DjjFvyHUSwznV05cy" id="board">
+    <div data-page-node-id="AQbFLKaT6o1wd63Z6ezQtH" id="nightVignette"></div>
+    <div data-page-node-id="N3f8kJ1vSCm0y4shnSantA" id="market"><!--pnid:o0JHfRxwl8jegbxILk0m1V-->🏪 市场（把卡拖到这里卖钱）</div>
+    <div data-page-node-id="bqM6VC2QfocWQjZ3FUjixW" id="toast"></div>
+  </div>
+  <div data-page-node-id="BCfX0shgAdxG3Lk1U0vZ5U" id="bottombar">
+    <div data-page-node-id="O0baNB8crN27efyCgcEFhM" class="navbtn" id="packBtn"><span data-page-node-id="5kAOKpud02udws4W6sCQYe" class="ne"><!--pnid:mDXJNz98x0986WbnsvfuWM-->🎁</span><!--pnid:od9vhxkx2zKaKYjjx8r6R3-->卡包</div>
+    <div data-page-node-id="6dGXEqQTMUCQ1SXtyjoDzH" class="navbtn" id="taskBtn"><span data-page-node-id="UL8qfBr1FyYwcHkynwV0YP" class="ne"><!--pnid:L5pITFHOLHvTrXFczfduCu-->📜</span><!--pnid:PSxygueyzgVhwAPgKi3RwM-->任务</div>
+    <div data-page-node-id="y3FOnZx5HdP72kmzay8uWq" class="navbtn" id="codexBtn"><span data-page-node-id="8RB21MowGPrkWd6TEeejMQ" class="ne"><!--pnid:WQdf9WvGdHajSIAOw9gjt4-->📖</span><!--pnid:Ta3bCBzklzUundUrGh1546-->图鉴</div>
+    <div data-page-node-id="isXmvXoeWNX9RlEVmfBYBn" class="navbtn" id="helpBtn"><span data-page-node-id="CE2RkB3flqmfL66bdVL7LO" class="ne"><!--pnid:pnXcDYy4NAGijNPUPDqr5Z-->❔</span><!--pnid:zSMYkMl61vOhwg3E6TaQh0-->帮助</div>
+    <div data-page-node-id="57qlf1xLPtnxVyY0FE74On" class="navbtn" id="setBtn"><span data-page-node-id="pC4WFT9jHMOiOldaQaSCZm" class="ne"><!--pnid:VWyUQXKd15dVJNV2Zfbci8-->⚙️</span><!--pnid:BJ1WxzZEyJjyGF0vJO2lUd-->设置</div>
+  </div>
+</div>
+
+<script data-page-node-id="rIB0u9c8mutonj4n53Top9" data-pnid-children="V2VplkaO0hgM1rt1KAj9nV">
+(function(){
+  "use strict";
+
+  // ===================== 全局配置 =====================
+  var DAY_LEN   = 90;     // 一个完整昼夜的秒数
+  var DAY_FRAC  = 0.6;    // 白天占比例，其余为夜晚
+  var CARD_W = 72, CARD_H = 90, STACK_OFF = 22;
+  var TICK_MS = 500;      // 主循环步长
+  var MON_SPEED = 14;     // 怪物每 TICK 移动像素
+  var ENGAGE_DIST = 64;   // 怪物与防御者交战距离
+  var MAX_STACK = 16;     // 单堆基础上限（有仓库时提高到 32）
+  var COMBAT_SEC = 2;     // 战斗伤害结算间隔(秒)
+  var FOOD_CAP = 12;      // 牧民饱食上限
+  var SAVE_KEY = "niuniu_ranch_save_v1";
+
+  // ===================== 卡牌数据 =====================
+  // cat: unit / node / res / food / item / build / life / mon
+  // 资源点的产出改由 RECIPES 表驱动（见后文 A.3）
+  // produces: 该资源点被牧民工作时产出的卡 type；sec: 产出周期(秒)
+  // atk/hp: 战斗；food: 食物值(喂食)；sale: 出售价(0=不可卖)
+  var META = {
+    // —— 单位 ——
+    herder:{cat:"unit", emoji:"🧑‍🌾", label:"牧民", atk:1, hp:5, sale:0},
+    dog:   {cat:"unit", emoji:"🐕", label:"牧羊犬", atk:4, hp:15, sale:0},
+    // —— 资源点（牧民叠上去按配方产出，节点本身不消耗）——
+    tree:     {cat:"node", emoji:"🌳", label:"树木", note:"牧民→木头×2 树枝×1", sale:0},
+    rock:     {cat:"node", emoji:"⛰️", label:"岩石", note:"牧民→石头×2", sale:0},
+    bush:     {cat:"node", emoji:"🌿", label:"蓝莓丛", note:"牧民→蓝莓×2", sale:0},
+    iron:     {cat:"node", emoji:"🗻", label:"铁矿脉", note:"牧民→铁矿石×2", sale:0},
+    gold:     {cat:"node", emoji:"💎", label:"金矿脉", note:"牧民→金矿石×1", sale:0},
+    herbfield:{cat:"node", emoji:"🌱", label:"药田", note:"牧民→药草", sale:0},
+    // —— 资源 / 材料 ——
+    wood:     {cat:"res", emoji:"🪵", label:"木头", sale:2},
+    branch:   {cat:"res", emoji:"🍃", label:"树枝", sale:1},
+    stone:    {cat:"res", emoji:"🪨", label:"石头", sale:2},
+    ironore:  {cat:"res", emoji:"🔩", label:"铁矿石", sale:5},
+    goldore:  {cat:"res", emoji:"🟡", label:"金矿石", sale:8},
+    herb:     {cat:"res", emoji:"🌿", label:"药草", sale:2},
+    wheat:    {cat:"res", emoji:"🌾", label:"小麦", sale:2},
+    flour:    {cat:"res", emoji:"🥣", label:"面粉", sale:3},
+    ironingot:{cat:"res", emoji:"⚙️", label:"铁锭", sale:10},
+    goldingot:{cat:"res", emoji:"🪙", label:"金锭", sale:15},
+    rawmeat:  {cat:"food", emoji:"🥩", label:"生肉", food:1, sale:3},
+    // —— 装备 / 道具 ——
+    sword:     {cat:"item", emoji:"🗡️", label:"木剑", sale:5},
+    ironsword: {cat:"item", emoji:"⚔️", label:"铁剑", sale:12},
+    woodshield:{cat:"item", emoji:"🛡️", label:"木盾", sale:5},
+    ironshield:{cat:"item", emoji:"🪖", label:"铁盾", sale:12},
+    axe:       {cat:"item", emoji:"🪓", label:"斧头", sale:5},
+    pickaxe:   {cat:"item", emoji:"⛏️", label:"镐子", sale:5},
+    torch:     {cat:"item", emoji:"🔥", label:"火把", sale:2},
+    potion:    {cat:"item", emoji:"🧪", label:"治疗药水", sale:6},
+    blueprint: {cat:"item", emoji:"📜", label:"冶炼厂图纸", sale:0},
+    // —— 食物 ——
+    blueberry:  {cat:"food", emoji:"🫐", label:"蓝莓", food:1, sale:1},
+    bread:      {cat:"food", emoji:"🍞", label:"面包", food:3, sale:2},
+    cookedmeat: {cat:"food", emoji:"🍖", label:"烤肉", food:4, sale:4},
+    fruitplatter:{cat:"food", emoji:"🥗", label:"果蔬拼盘", food:3, sale:6},
+    // —— 建筑 ——
+    house:     {cat:"build", emoji:"🏠", label:"房屋", note:"人口+繁殖", sale:0},
+    farm:      {cat:"build", emoji:"🏡", label:"农场", note:"牧民→小麦×2", sale:0},
+    lumberyard:{cat:"build", emoji:"🪓", label:"伐木场", note:"牧民→木头×3", sale:0},
+    quarry:    {cat:"build", emoji:"⚒️", label:"采石场", note:"牧民→石头×3", sale:0},
+    smelter:   {cat:"build", emoji:"🔥", label:"冶炼厂", note:"冶炼铁/金锭", sale:0},
+    kitchen:   {cat:"build", emoji:"🍳", label:"厨房", note:"烹饪食物", sale:0},
+    warehouse: {cat:"build", emoji:"📦", label:"仓库", note:"堆叠上限↑", sale:0},
+    wall:      {cat:"build", emoji:"🧱", label:"城墙", note:"减刷怪", sale:0},
+    market:    {cat:"build", emoji:"🏪", label:"市场", note:"卖资源换钱", sale:0},
+    kennel:    {cat:"build", emoji:"🏰", label:"兵营", note:"训练牧羊犬", sale:0},
+    // —— 牲畜 ——
+    pig:   {cat:"life", emoji:"🐷", label:"猪", note:"牧民→生肉×3", sale:15},
+    sheep: {cat:"life", emoji:"🐑", label:"绵羊", note:"+兵营→牧羊犬", sale:15},
+    // —— 怪物（夜间刷新）——
+    thief: {cat:"mon", emoji:"🥷", label:"小偷", atk:1, hp:6, drop:8, sale:0},
+    bandit:{cat:"mon", emoji:"👹", label:"大盗", atk:4, hp:16, drop:20, sale:0}
+  };
+
+  // 卡包定义
+  var PACKS = [
+    {id:"basic", name:"基础卡包", emoji:"📦", price:10,
+      desc:"牧民/资源/食物/犬", items:[["herder",2],["dog",1],["bush",1],["tree",1],["rock",1],["blueberry",2],["wood",2]]},
+    {id:"build", name:"建造卡包", emoji:"🏗️", price:25,
+      desc:"建材/树枝/工具", items:[["wood",4],["stone",4],["branch",2],["axe",1]]},
+    {id:"ranch", name:"牧场卡包", emoji:"🐮", price:30,
+      desc:"牲畜/作物", items:[["pig",1],["sheep",1],["wheat",2]]},
+    {id:"smith", name:"冶炼卡包", emoji:"⚒️", price:50,
+      desc:"矿石/药草/图纸", items:[["iron",1],["gold",1],["herb",2],["blueprint",1]]},
+    {id:"rare", name:"稀有卡包", emoji:"💎", price:60,
+      desc:"铁矿/药水/烤肉", items:[["iron",1],["potion",1],["cookedmeat",2],["ironsword",1]]}
+  ];
+
+  // 任务定义
+  var TASKS = [
+    {id:"t1", name:"雇佣 3 名牧民", check:function(s){return s.herders>=3;}, rew:15},
+    {id:"t2", name:"建造 1 座房屋", check:function(s){return s.houses>=1;}, rew:20},
+    {id:"t3", name:"金币达到 50", check:function(s){return s.gold>=50;}, rew:25},
+    {id:"t4", name:"击杀 1 个怪物", check:function(s){return s.kills>=1;}, rew:20},
+    {id:"t5", name:"产出 10 个木头", check:function(s){return s.totalWood>=10;}, rew:20},
+    {id:"t6", name:"拥有 5 名牧民", check:function(s){return s.herders>=5;}, rew:30},
+    {id:"t7", name:"建造城墙", check:function(s){return s.walls>=1;}, rew:25},
+    {id:"t8", name:"金币达到 200", check:function(s){return s.gold>=200;}, rew:50},
+    {id:"t9", name:"建造冶炼厂", check:function(s){return s.smelters>=1;}, rew:40},
+    {id:"t10", name:"装备一件武器", check:function(s){return s.equipped>=1;}, rew:30}
+  ];
+
+  // ===================== 配方表（数据驱动，对齐设计规范 A.3） =====================
+  // in: 所需卡牌及数量；out: 产出卡牌及数量；sec: 耗时(秒)
+  // consume: 完成后是否消耗输入（牧民与建筑永远不消耗；其余按规则消失）
+  // need: 需要场上存在该建筑；cooldown: 完成后该堆冷却(秒)
+  // 匹配规则（见 matchRecipe）：一堆卡可能同时满足多个配方（配方间存在“包含”关系，
+  // 如 房屋=木头×2+石头，而 伐木场=木头×4+石头）。为避免误判，matchRecipe 这样选：
+  //  ① 按 kind 分优先级：食用/装备(3) > 繁殖/宰杀/训练(2) > 建造/制作/冶炼/烹饪(1) > 被动生产(0)；
+  //  ② 同级内取“输入卡数最多(最具体)”的配方；再同级同具体度按数组顺序。
+  // 这样既保证“有材料先建造/制作而非无休止采集”，又能正确处理包含关系（建伐木场而非房屋、
+  // 建冶炼厂而非房屋）。数组顺序仅作同分兜底，不影响正确性。
+  var RECIPES = [
+    // —— 食用 / 药剂 / 装备（即时类，最优先）——
+    {id:"eat_blueberry", name:"食用蓝莓", in:{herder:1, blueberry:1}, out:[], sec:1, consume:true, kind:"eat", foodGain:1, label:"🫐 进食中"},
+    {id:"eat_bread", name:"食用面包", in:{herder:1, bread:1}, out:[], sec:1, consume:true, kind:"eat", foodGain:3, label:"🍞 进食中"},
+    {id:"eat_cookedmeat", name:"食用烤肉", in:{herder:1, cookedmeat:1}, out:[], sec:1, consume:true, kind:"eat", foodGain:4, hpGain:2, label:"🍖 进食中"},
+    {id:"eat_fruitplatter", name:"食用果蔬拼盘", in:{herder:1, fruitplatter:1}, out:[], sec:1, consume:true, kind:"eat", foodGain:3, label:"🥗 进食中"},
+    {id:"use_potion", name:"使用药水", in:{herder:1, potion:1}, out:[], sec:1, consume:true, kind:"potion", hpGain:10, label:"🧪 治疗中"},
+    {id:"equip_sword", name:"装备木剑", in:{herder:1, sword:1}, out:[], sec:1, consume:true, kind:"equip", atk:1, label:"🗡️ 装备中"},
+    {id:"equip_ironsword", name:"装备铁剑", in:{herder:1, ironsword:1}, out:[], sec:1, consume:true, kind:"equip", atk:3, label:"⚔️ 装备中"},
+    {id:"equip_shield", name:"装备木盾", in:{herder:1, woodshield:1}, out:[], sec:1, consume:true, kind:"equip", hp:3, label:"🛡️ 装备中"},
+    {id:"equip_ironshield", name:"装备铁盾", in:{herder:1, ironshield:1}, out:[], sec:1, consume:true, kind:"equip", hp:6, label:"🪖 装备中"},
+    // —— 建造（动作类，最优先于手工：凑齐建材即建成建筑，而非误做手工）——
+    {id:"build_house", name:"建造房屋", in:{herder:1, wood:2, stone:1}, out:[{type:"house",n:1}], sec:15, consume:true, kind:"build", label:"🏠 建造中"},
+    {id:"build_farm", name:"建造农场", in:{herder:1, wood:3, stone:1}, out:[{type:"farm",n:1}], sec:20, consume:true, kind:"build", label:"🏡 建造中"},
+    {id:"build_lumberyard", name:"建造伐木场", in:{herder:1, wood:4, stone:1}, out:[{type:"lumberyard",n:1}], sec:20, consume:true, kind:"build", label:"🪓 建造中"},
+    {id:"build_quarry", name:"建造采石场", in:{herder:1, wood:2, stone:3}, out:[{type:"quarry",n:1}], sec:20, consume:true, kind:"build", label:"⚒️ 建造中"},
+    {id:"build_smelter", name:"建造冶炼厂", in:{herder:1, wood:2, stone:4, blueprint:1}, out:[{type:"smelter",n:1}], sec:25, consume:true, kind:"build", label:"🔥 建造中"},
+    {id:"build_kitchen", name:"建造厨房", in:{herder:1, wood:2, stone:2}, out:[{type:"kitchen",n:1}], sec:18, consume:true, kind:"build", label:"🍳 建造中"},
+    {id:"build_warehouse", name:"建造仓库", in:{herder:1, wood:4, stone:2}, out:[{type:"warehouse",n:1}], sec:22, consume:true, kind:"build", label:"📦 建造中"},
+    {id:"build_wall", name:"建造城墙", in:{herder:1, stone:3}, out:[{type:"wall",n:1}], sec:12, consume:true, kind:"build", label:"🧱 建造中"},
+    {id:"build_market", name:"建造市场", in:{herder:1, wood:3, stone:2}, out:[{type:"market",n:1}], sec:20, consume:true, kind:"build", label:"🏪 建造中"},
+    {id:"build_kennel", name:"建造兵营", in:{herder:1, wood:4, stone:3, ironingot:1}, out:[{type:"kennel",n:1}], sec:25, consume:true, kind:"build", label:"🏰 建造中"},
+    // —— 制作（手工）——
+    {id:"craft_wooden_sword", name:"制作木剑", in:{herder:1, branch:2}, out:[{type:"sword",n:1}], sec:5, consume:true, kind:"craft", label:"🗡️ 制作中"},
+    {id:"craft_iron_sword", name:"制作铁剑", in:{herder:1, ironingot:1, branch:1}, out:[{type:"ironsword",n:1}], sec:10, consume:true, kind:"craft", need:"smelter", label:"⚔️ 制作中"},
+    {id:"craft_wooden_shield", name:"制作木盾", in:{herder:1, wood:2}, out:[{type:"woodshield",n:1}], sec:6, consume:true, kind:"craft", label:"🛡️ 制作中"},
+    {id:"craft_iron_shield", name:"制作铁盾", in:{herder:1, ironingot:2, wood:1}, out:[{type:"ironshield",n:1}], sec:12, consume:true, kind:"craft", need:"smelter", label:"🪖 制作中"},
+    {id:"craft_axe", name:"制作斧头", in:{herder:1, wood:1, stone:1}, out:[{type:"axe",n:1}], sec:6, consume:true, kind:"craft", label:"🪓 制作中"},
+    {id:"craft_pickaxe", name:"制作镐子", in:{herder:1, wood:1, stone:2}, out:[{type:"pickaxe",n:1}], sec:6, consume:true, kind:"craft", label:"⛏️ 制作中"},
+    {id:"craft_torch", name:"制作火把", in:{herder:1, branch:1}, out:[{type:"torch",n:1}], sec:3, consume:true, kind:"craft", label:"🔥 制作中"},
+    {id:"craft_potion", name:"制作治疗药水", in:{herder:1, herb:2, blueberry:1}, out:[{type:"potion",n:1}], sec:8, consume:true, kind:"craft", label:"🧪 制作中"},
+    // —— 冶炼（需冶炼厂）——
+    {id:"smelt_iron", name:"冶炼铁锭", in:{herder:1, ironore:2}, out:[{type:"ironingot",n:1}], sec:10, consume:true, kind:"smelt", need:"smelter", label:"⚙️ 冶炼中"},
+    {id:"smelt_gold", name:"冶炼金锭", in:{herder:1, goldore:2}, out:[{type:"goldingot",n:1}], sec:15, consume:true, kind:"smelt", need:"smelter", label:"🪙 冶炼中"},
+    // —— 烹饪（需厨房）——
+    {id:"mill_flour", name:"磨面粉", in:{herder:1, wheat:2}, out:[{type:"flour",n:1}], sec:5, consume:true, kind:"cook", label:"🌾 磨粉中"},
+    {id:"cook_bread", name:"烤面包", in:{herder:1, flour:1}, out:[{type:"bread",n:1}], sec:8, consume:true, kind:"cook", need:"kitchen", label:"🍞 烘焙中"},
+    {id:"cook_meat", name:"烤肉", in:{herder:1, rawmeat:1}, out:[{type:"cookedmeat",n:1}], sec:6, consume:true, kind:"cook", need:"kitchen", label:"🍖 烤肉中"},
+    {id:"cook_platter", name:"果蔬拼盘", in:{herder:1, blueberry:3, herb:1}, out:[{type:"fruitplatter",n:1}], sec:10, consume:true, kind:"cook", need:"kitchen", label:"🥗 拼盘中"},
+    // —— 宰杀 / 繁殖 / 训练 ——
+    {id:"slaughter_pig", name:"宰杀猪", in:{herder:1, pig:1}, out:[{type:"rawmeat",n:3}], sec:3, consume:true, kind:"slaughter", label:"🔪 宰杀中"},
+    {id:"breed_baby", name:"繁殖", in:{herder:2, house:1}, out:[{type:"herder",n:1}], sec:10, consume:true, kind:"breed", cooldown:120, label:"👶 繁殖中"},
+    {id:"train_dog", name:"训练牧羊犬", in:{herder:1, sheep:1, kennel:1}, out:[{type:"dog",n:1}], sec:15, consume:true, kind:"train", label:"🐕 训练中"},
+    // —— 建筑生产（被动，建筑已建好后的自动产出）——
+    {id:"prod_lumberyard", name:"伐木", in:{herder:1, lumberyard:1}, out:[{type:"wood",n:3}], sec:6, consume:false, kind:"produce", label:"🪓 生产中"},
+    {id:"prod_quarry", name:"采石", in:{herder:1, quarry:1}, out:[{type:"stone",n:3}], sec:6, consume:false, kind:"produce", label:"⚒️ 生产中"},
+    {id:"prod_farm", name:"种植", in:{herder:1, farm:1}, out:[{type:"wheat",n:2}], sec:4, consume:false, kind:"produce", label:"🌾 种植中"},
+    // —— 采集（资源点，节点不消耗，被动生产，最后匹配）——
+    {id:"gather_wood", name:"伐木", in:{herder:1, tree:1}, out:[{type:"wood",n:2},{type:"branch",n:1}], sec:8, consume:false, kind:"produce", label:"🌳 砍伐中"},
+    {id:"gather_stone", name:"采石", in:{herder:1, rock:1}, out:[{type:"stone",n:2}], sec:8, consume:false, kind:"produce", label:"⛰️ 采石中"},
+    {id:"gather_blueberry", name:"采蓝莓", in:{herder:1, bush:1}, out:[{type:"blueberry",n:2}], sec:5, consume:false, kind:"produce", label:"🌿 采摘中"},
+    {id:"gather_iron", name:"采铁矿", in:{herder:1, iron:1}, out:[{type:"ironore",n:2}], sec:12, consume:false, kind:"produce", label:"🗻 开采中"},
+    {id:"gather_gold", name:"采金矿", in:{herder:1, gold:1}, out:[{type:"goldore",n:1}], sec:15, consume:false, kind:"produce", label:"💎 开采中"},
+    {id:"gather_herb", name:"采药草", in:{herder:1, herbfield:1}, out:[{type:"herb",n:1}], sec:4, consume:false, kind:"produce", label:"🌱 采集中"}
+  ];
+
+  // ===================== 状态 =====================
+  var piles = [];          // [{id,x,y,cards:[card], prog, action, timer, isPack}]
+  var nextId = 1;
+  var day = 1, timeLeft = DAY_LEN, phase = "day", paused = false, gameOver = false;
+  var gold = 0;
+  var drag = null;
+  var seenCards = {};       // 图鉴：见过的卡 type
+  var tasksDone = {};       // 已完成任务 id
+  var stats = {herders:0,houses:0,walls:0,kills:0,totalWood:0,gold:0,smelters:0,equipped:0};
+  var nightSpawned = false; // 本夜是否已刷怪
+  var lastSave = Date.now();
+
+  var board = document.getElementById("board");
+  var app = document.getElementById("app");
+  var marketEl = document.getElementById("market");
+  var toastEl = document.getElementById("toast");
+  var toastTimer = null;
+
+  function $(id){ return document.getElementById(id); }
+  function rand(a,b){ return a + Math.random()*(b-a); }
+  function clamp(v,min,max){ return v<min?min:(v>max?max:v); }
+  function boardSize(){ return {w:board.clientWidth, h:board.clientHeight}; }
+  function newId(){ return nextId++; }
+  function mk(type){ var c={id:newId(), type:type}; if(META[type].hp) c.hp=META[type].hp; if(type==="herder") c.fed=0; return c; }
+  function makePile(x,y,cards){ var p={id:newId(), x:x, y:y, cards:cards||[], cd:0}; piles.push(p); return p; }
+  function removePile(p){ var i=piles.indexOf(p); if(i>=0) piles.splice(i,1); }
+  function pileOf(card){ for(var i=0;i<piles.length;i++){ if(piles[i].cards.indexOf(card)>=0) return piles[i]; } return null; }
+  function allCards(){ var r=[]; piles.forEach(function(p){ p.cards.forEach(function(c){r.push(c);}); }); return r; }
+  function countType(type){ var n=0; allCards().forEach(function(c){ if(c.type===type) n++; }); return n; }
+  function removeCardObj(c){ var p=pileOf(c); if(p){ p.cards=p.cards.filter(function(x){return x!==c;}); if(p.cards.length===0) removePile(p); } }
+
+  function toast(msg){
+    toastEl.textContent = msg; toastEl.classList.add("show");
+    if(toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 1900);
+  }
+  function markSeen(type){ seenCards[type]=true; }
+
+  function scatter(cardsArr){
+    var s = boardSize();
+    cardsArr.forEach(function(c){
+      markSeen(c.type);
+      var x = rand(8, Math.max(20, s.w-CARD_W-8));
+      var y = rand(8, Math.max(20, s.h-CARD_H-64));
+      makePile(x, y, [c]);
+    });
+  }
+
+  // ===================== 堆叠触发规则 =====================
+  // 本游戏允许自由堆叠；具体行为由 pileAction 解释。
+  // 这里只判断"是否允许叠放"以及"喂食/出售"等特殊即时行为。
+  function isFood(type){ return META[type] && META[type].cat==="food"; }
+  function isSellable(type){ return META[type] && META[type].sale>0; }
+
+  // ===================== pileAction：解释每堆的行为 =====================
+  // 返回 {type, sec, label, recipe} 或 null
+  function pileAction(p){
+    var cards = p.cards;
+    if(cards.length===0) return null;
+    var monster = cards.find(function(c){return META[c.type].cat==="mon";});
+    var hasHerder = cards.some(function(c){return c.type==="herder";});
+    var hasDog = cards.some(function(c){return c.type==="dog";});
+    // 战斗：怪物 + 防御者(牧民/狗) 同堆
+    if(monster && (hasHerder||hasDog)) return {type:"fight", sec:COMBAT_SEC, label:"⚔️ 战斗中", recipe:null};
+    // 配方匹配
+    var r = matchRecipe(p);
+    if(r) return {type:r.id, sec:r.sec, label:r.label, recipe:r};
+    return null;
+  }
+
+  function popCap(){ return 4*countType("house"); }
+  function popCount(){ return countType("herder"); }
+  function maxStack(){ return countType("warehouse")>0 ? 32 : MAX_STACK; }
+
+  // 在 RECIPES 中按数组顺序找第一个满足当前堆的配方
+  // 配方匹配优先级（kind → 权重）：食用/装备 最高，其次 繁殖/宰杀/训练，
+  // 再次 建造/制作/冶炼/烹饪，最低 被动生产(采集/建筑产出)。
+  // 同级内取“输入卡数最多(最具体)”的配方，以正确处理“包含关系”的配方，
+  // 例如 木头×2+石头 既能建房屋也能建伐木场(木头×4+石头)，应优先建伐木场；
+  // 又如 木头×2+石头×4+图纸 既能建房屋也能建冶炼厂，应优先建冶炼厂。
+  var KIND_PRI = {eat:3, potion:3, equip:3, slaughter:2, breed:2, train:2, build:1, craft:1, smelt:1, cook:1, produce:0};
+  function recipeWeight(r){
+    var s=0; for(var k in r.in) s += r.in[k];
+    return {pri: KIND_PRI[r.kind]||0, spec: s, idx: RECIPES.indexOf(r)};
+  }
+  function matchRecipe(p){
+    var cnt={}; p.cards.forEach(function(c){ cnt[c.type]=(cnt[c.type]||0)+1; });
+    var best=null, bestW=null;
+    for(var i=0;i<RECIPES.length;i++){
+      var r=RECIPES[i];
+      if(r.need && countType(r.need)===0) continue;   // 前置建筑不在场
+      if(r.cooldown && p.cd>0) continue;              // 冷却中
+      var ok=true;
+      for(var k in r.in){ if((cnt[k]||0) < r.in[k]){ ok=false; break; } }
+      if(!ok) continue;
+      var w = recipeWeight(r);
+      if(!best
+         || w.pri > bestW.pri
+         || (w.pri===bestW.pri && w.spec > bestW.spec)
+         || (w.pri===bestW.pri && w.spec===bestW.spec && w.idx < bestW.idx)){
+        best=r; bestW=w;
+      }
+    }
+    return best;
+  }
+
+  function doAction(p, info){
+    if(info.type==="fight"){ fightStep(p); return; }
+    applyRecipe(p, info.recipe);
+  }
+
+  // 执行配方：消耗输入(牧民与建筑除外)→产出→即时效果
+  function applyRecipe(p, r){
+    if(r.consume){
+      for(var k in r.in){
+        if(k==="herder") continue;                      // 牧民永不消耗
+        if(META[k] && META[k].cat==="build") continue;  // 建筑(房屋/兵营/市场)不消耗
+        p.cards = removeN(p.cards, k, r.in[k]);
+      }
+    }
+    // 产出（仓库/堆叠上限保护）
+    if(r.kind==="produce" && p.cards.length>=maxStack()){ return; }
+    r.out.forEach(function(o){
+      for(var i=0;i<o.n;i++){ p.cards.push(mk(o.type)); markSeen(o.type); if(o.type==="wood") stats.totalWood++; }
+    });
+    // 繁殖冷却（房屋 120s）
+    if(r.kind==="breed"){ p.cd = r.cooldown; }
+    // 即时效果
+    if(r.kind==="eat" || r.kind==="potion"){
+      var h = p.cards.find(function(c){return c.type==="herder";});
+      if(h){
+        if(r.foodGain){ h.fed = Math.min(FOOD_CAP, (h.fed||0)+r.foodGain); toast("🍽 "+r.name+"：饱食 "+h.fed); }
+        if(r.hpGain){ if(h.hp==null) h.hp=META.herder.hp; h.hp += r.hpGain; toast("❤️ "+r.name+"：血量+"+r.hpGain); }
+      }
+    }
+    if(r.kind==="equip"){
+      var h2 = p.cards.find(function(c){return c.type==="herder";});
+      if(h2){
+        h2.atkBonus=(h2.atkBonus||0)+(r.atk||0);
+        h2.hpBonus=(h2.hpBonus||0)+(r.hp||0);
+        toast("🛡️ 装备成功！攻击+"+(r.atk||0)+" 血量+"+(r.hp||0));
+      }
+    }
+    if(r.kind==="build"){ toast("🔨 建成："+r.name.replace("建造","")); }
+    else if(r.kind==="breed"){ toast("👶 一名新牧民出生！"); }
+    else if(r.kind==="train"){ toast("🐕 牧羊犬训练完成！"); }
+    else if(r.kind==="slaughter"){ toast("🔪 宰杀完成，获得生肉"); }
+  }
+
+  // 战斗一步：防御者攻击怪物，怪物反击
+  function fightStep(p){
+    var monster = p.cards.find(function(c){return META[c.type].cat==="mon";});
+    var def = p.cards.find(function(c){return c.type==="dog";}) || p.cards.find(function(c){return c.type==="herder";});
+    if(!monster||!def) return;
+    if(monster.hp==null) monster.hp=META[monster.type].hp;
+    if(def.hp==null) def.hp=META[def.type].hp;
+    var defAtk = META[def.type].atk + (def.atkBonus||0);
+    monster.hp -= defAtk;
+    def.hp -= META[monster.type].atk;
+    if(monster.hp<=0){ killMonster(p, monster); }
+    else if(def.hp<=0){ removeCardObj(def); toast("💀 "+(META[def.type].label)+" 倒下了"); }
+  }
+  function removeN(cards, type, n){
+    var removed=0;
+    return cards.filter(function(c){ if(c.type===type && removed<n){removed++; return false;} return true; });
+  }
+  function killMonster(p, monster){
+    var drop = META[monster.type].drop||0;
+    gold += drop; stats.kills++;
+    removeCardObj(monster);
+    toast("🗡 击败"+(META[monster.type].label)+"！+¥"+drop);
+  }
+
+  // ===================== 主循环 =====================
+  var tickCount = 0;
+  setInterval(function(){
+    if(paused || gameOver) return;
+    tickCount++;
+    // 昼夜推进
+    timeLeft -= TICK_MS/1000;
+    if(timeLeft<=0){ onDayEnd(); return; }
+    updatePhase();
+    // 生产 / 建造 / 繁殖 / 战斗
+    piles.forEach(function(p){
+      if(p.isPack) return;
+      if(p.cd>0) p.cd = Math.max(0, p.cd - TICK_MS/1000); // 繁殖冷却递减
+      var info = pileAction(p);
+      if(!info){ p.prog=0; p.action=null; return; }
+      if(p.action!==info.type){ p.action=info.type; p.prog=0; }
+      p.actionSec = info.sec;
+      p.prog += TICK_MS/1000;
+      if(p.prog >= info.sec){ p.prog=0; doAction(p, info); render(); updateHUD(); }
+    });
+    // 怪物移动与交战
+    moveMonsters();
+    // 自动保存
+    if(tickCount%10===0) saveGame();
+  }, TICK_MS);
+
+  function updatePhase(){
+    var daySec = DAY_LEN*DAY_FRAC;
+    var isNight = timeLeft <= (DAY_LEN-daySec);
+    var newPhase = isNight ? "night" : "day";
+    if(newPhase!==phase){
+      phase = newPhase;
+      app.classList.toggle("night", phase==="night");
+      if(phase==="night"){ nightSpawned=false; onNightStart(); }
+      else { onDayStart(); }
+    } else if(phase==="night" && !nightSpawned){
+      nightSpawned = true; spawnMonsters();
+    }
+  }
+
+  function onNightStart(){ toast("🌙 夜幕降临，当心怪物来袭！"); }
+  function onDayStart(){ toast("☀️ 天亮了，怪物撤退"); clearMonsters(); }
+
+  function spawnMonsters(){
+    var herders = popCount();
+    if(herders<=0) return;
+    var walls = countType("wall");
+    var n = (day<=1) ? 0 : clamp(1 + Math.floor((day-2)/2) - walls, 0, 4);
+    var s = boardSize();
+    for(var i=0;i<n;i++){
+      var type = (Math.random()<0.7)?"thief":"bandit";
+      var edge = Math.floor(Math.random()*4);
+      var x,y;
+      if(edge===0){ x=rand(20,s.w-92); y=10; }
+      else if(edge===1){ x=rand(20,s.w-92); y=s.h-CARD_H-10; }
+      else if(edge===2){ x=10; y=rand(20,s.h-CARD_H-10); }
+      else { x=s.w-CARD_W-10; y=rand(20,s.h-CARD_H-10); }
+      var m = mk(type); markSeen(type);
+      makePile(x,y,[m]);
+    }
+  }
+  function clearMonsters(){
+    piles.slice().forEach(function(p){
+      if(p.cards.some(function(c){return META[c.type].cat==="mon";})) removePile(p);
+    });
+  }
+  function moveMonsters(){
+    if(phase!=="night") return;
+    var dogPiles = piles.filter(function(p){ return p.cards.some(function(c){return c.type==="dog";}); });
+    var herderPiles = piles.filter(function(p){ return p.cards.some(function(c){return c.type==="herder";}); });
+    // 有牧羊犬时，所有怪物优先扑向牧羊犬（全局保护牧民）
+    var targets = dogPiles.length>0 ? dogPiles : herderPiles;
+    if(targets.length===0) return;
+    piles.slice().forEach(function(p){
+      if(p.isPack) return;
+      var mon = p.cards.find(function(c){return META[c.type].cat==="mon";});
+      if(!mon) return;
+      // 已与防御者同堆则交由 fight 处理
+      if(p.cards.some(function(c){return c.type==="herder"||c.type==="dog";})) return;
+      // 找最近目标
+      var best=null, bd=1e9;
+      targets.forEach(function(t){
+        var dx=(t.x+CARD_W/2)-(p.x+CARD_W/2), dy=(t.y+CARD_H/2)-(p.y+CARD_H/2);
+        var d=dx*dx+dy*dy; if(d<bd){bd=d;best=t;}
+      });
+      if(!best) return;
+      var dx=(best.x+CARD_W/2)-(p.x+CARD_W/2), dy=(best.y+CARD_H/2)-(p.y+CARD_H/2);
+      var dist=Math.sqrt(bd);
+      if(dist<=ENGAGE_DIST){
+        // 交战：把怪物并入目标堆
+        var moving = p.cards.filter(function(c){return META[c.type].cat==="mon";});
+        removePile(p);
+        best.cards = best.cards.concat(moving);
+        render(); updateHUD();
+        return;
+      }
+      var ux=dx/dist, uy=dy/dist;
+      p.x = clamp(p.x+ux*MON_SPEED, 4, boardSize().w-CARD_W-4);
+      p.y = clamp(p.y+uy*MON_SPEED, 4, boardSize().h-CARD_H-4);
+    });
+    render(); updateHUD();
+  }
+
+  // ===================== 每日结算 =====================
+  function onDayEnd(){
+    // 食物消耗：每位牧民每天消耗 1 餐饱食；不足则饿死
+    var herders = allCards().filter(function(c){return c.type==="herder";});
+    var starved = 0;
+    herders.slice().forEach(function(c){
+      if((c.fed||0) >= 1){ c.fed -= 1; }      // 吃一餐
+      else { removeCardObj(c); starved++; }   // 没得吃，饿死
+    });
+    if(starved>0) toast("🍽 "+starved+" 名牧民饿死了");
+    else toast("🌅 第 "+day+" 天结束，牧民们平安度过了");
+    // 是否全员阵亡
+    if(popCount()===0){ endGame(); return; }
+    day++; timeLeft = DAY_LEN; phase="day"; app.classList.remove("night");
+    nightSpawned=false; clearMonsters();
+    render(); updateHUD(); saveGame();
+  }
+
+  function endGame(){
+    gameOver = true;
+    var ov = document.createElement("div");
+    ov.className="overlay"; ov.id="overOverlay";
+    ov.innerHTML =
+      '<div class="modal adbox">'+
+      '<h2>🪦 牧场荒废了</h2>'+
+      '<p>所有牧民都饿死啦！</p>'+
+      '<p style="color:#2e86de;font-weight:800;">看广告可复活 2 名牧民（附赠食物）</p>'+
+      '<div class="row">'+
+      '<button class="btn gold" id="adBtn">📺 看广告复活</button>'+
+      '<button class="btn alt" id="restartBtn">🔄 重新开始</button>'+
+      '</div></div>';
+    board.appendChild(ov);
+    $("adBtn").onclick = function(){
+      var box=ov.querySelector(".modal");
+      box.innerHTML='<h2>📺 广告播放中…</h2><div class="spinner"></div><p>复活牧民，请稍候</p>';
+      setTimeout(function(){
+        var s=boardSize();
+        makePile(rand(40,s.w-140), rand(40,s.h-200),[mk("herder"),mk("herder"),mk("bread")]);
+        gameOver=false; if(ov.parentNode) ov.parentNode.removeChild(ov);
+        render(); updateHUD();
+      },1600);
+    };
+    $("restartBtn").onclick = function(){ localStorage.removeItem(SAVE_KEY); location.reload(); };
+  }
+
+  // ===================== 拖拽交互 =====================
+  function onDown(e){
+    if(gameOver) return;
+    // 新手卡包：点到它就打开。走 onDown 主路径，保证任何环境都能触发，
+    // 不再依赖卡包元素自身挂的监听器（某些浏览器/WebView 下可能不生效）。
+    if(e.target && e.target.closest && e.target.closest(".packobj")){
+      e.preventDefault();
+      var pk = piles.find(function(p){ return p.isPack; });
+      if(pk && pk._open) pk._open();
+      return;
+    }
+    var el = e.target.closest ? e.target.closest(".card") : null;
+    if(!el) return;
+    var cid = parseInt(el.getAttribute("data-id"),10);
+    var card=null; allCards().forEach(function(c){ if(c.id===cid) card=c; });
+    if(!card) return;
+    var p = pileOf(card); if(!p) return;
+    if(p.isPack){ return; }
+    var idx = p.cards.indexOf(card);
+    var moving = p.cards.slice(idx);
+    drag = {pile:p, index:idx, moving:moving, startX:e.clientX, startY:e.clientY, dx:0, dy:0, moved:false};
+    e.preventDefault();
+  }
+  function onMove(e){
+    if(!drag) return;
+    drag.dx = e.clientX-drag.startX; drag.dy = e.clientY-drag.startY;
+    if(Math.abs(drag.dx)>4||Math.abs(drag.dy)>4) drag.moved=true;
+    render();
+  }
+  function onUp(e){
+    if(!drag) return;
+    var d=drag; drag=null;
+    var bx = d.pile.x + d.dx;
+    var by = d.pile.y + d.index*STACK_OFF + d.dy;
+    var cx = bx+CARD_W/2, cy=by+CARD_H/2;
+
+    // 拖到市场 → 出售
+    var mr=marketEl.getBoundingClientRect(), br=board.getBoundingClientRect();
+    if(cx>mr.left-br.left && cx<mr.right-br.left && cy>mr.top-br.top && cy<mr.bottom-br.top){
+      sellCards(d); render(); updateHUD(); return;
+    }
+    var target = pileAtPoint(cx, cy, d.pile);
+    if(target){
+      // 喂食：移动方是食物，目标堆有牧民
+      if(d.moving.some(isFoodCard) && target.cards.some(function(c){return c.type==="herder";})){
+        detach(d.moving, d.pile);
+        feedHerder(d, target);
+        // 没喂完的食物卡（含吃撑了的）叠到目标堆
+        if(d.moving.length>0) target.cards = target.cards.concat(d.moving);
+        render(); updateHUD(); return;
+      }
+      detach(d.moving, d.pile);
+      target.cards = target.cards.concat(d.moving);
+      render(); updateHUD(); return;
+    }
+    // 空地 → 新堆
+    detach(d.moving, d.pile);
+    var x=clamp(bx,6,boardSize().w-CARD_W-6), y=clamp(by,6,boardSize().h-CARD_H-6);
+    makePile(x,y,d.moving);
+    render(); updateHUD();
+  }
+  function isFoodCard(c){ return isFood(c.type); }
+
+  function detach(moving, fromPile){
+    fromPile.cards = fromPile.cards.filter(function(c){return moving.indexOf(c)<0;});
+    if(fromPile.cards.length===0) removePile(fromPile);
+  }
+  function pileAtPoint(x,y,exclude){
+    for(var i=piles.length-1;i>=0;i--){
+      var p=piles[i]; if(p===exclude||p.isPack) continue;
+      for(var j=0;j<p.cards.length;j++){
+        var cx=p.x, cy=p.y+j*STACK_OFF;
+        if(x>=cx&&x<=cx+CARD_W&&y>=cy&&y<=cy+CARD_H) return p;
+      }
+    }
+    return null;
+  }
+  function feedHerder(d, target){
+    var herder = target.cards.find(function(c){return c.type==="herder";});
+    d.moving.slice().forEach(function(c){
+      if(!isFood(c.type)) return;
+      if((herder.fed||0)>=FOOD_CAP){ return; } // 已吃饱
+      var v=META[c.type].food||1;
+      herder.fed = Math.min(FOOD_CAP,(herder.fed||0)+v);
+      // 从 moving 移除该食物卡
+      var i=d.moving.indexOf(c); if(i>=0) d.moving.splice(i,1);
+      toast("🍽 "+META[c.type].label+" 喂给牧民（饱食 "+herder.fed+"/"+FOOD_CAP+"）");
+    });
+    // 没喂完的留着（上面循环后 d.moving 只含未喂的）
+  }
+  function sellCards(d){
+    var remain=[];
+    d.moving.forEach(function(c){
+      var price=META[c.type]?META[c.type].sale||0:0;
+      if(price>0){ gold+=price; stats.gold=gold; toast("售出「"+META[c.type].label+"」 +¥"+price); }
+      else { remain.push(c); }
+    });
+    detach(d.moving, d.pile);
+    if(remain.length>0){
+      if(d.pile.cards.length>0) d.pile.cards=d.pile.cards.concat(remain);
+      else makePile(clamp(d.pile.x,6,boardSize().w-CARD_W-6),clamp(d.pile.y,6,boardSize().h-CARD_H-6),remain);
+    }
+    if(d.pile.cards.length===0) removePile(d.pile);
+    checkTasks();
+  }
+
+  // ===================== 渲染 =====================
+  function render(){
+    var old=board.querySelectorAll(".card, .pileprog");
+    for(var i=0;i<old.length;i++) old[i].remove();
+    piles.forEach(function(p, pi){
+      if(p.isPack) return;
+      // 生产/建造进度条
+      if(p.action && p.actionSec){
+        var frac = clamp(p.prog/p.actionSec, 0, 1);
+        var info = pileAction(p);
+        var label = info ? info.label : "";
+        var pe = document.createElement("div");
+        pe.className="pileprog";
+        pe.style.left = clamp(p.x+ (CARD_W-84)/2, 2, boardSize().w-86)+"px";
+        pe.style.top  = clamp(p.y - 26, 2, boardSize().h-20)+"px";
+        pe.innerHTML = '<div class="pp-label">'+label+'</div><div class="pp-track"><div class="pp-fill" style="width:'+(frac*100)+'%"></div></div>';
+        board.appendChild(pe);
+      }
+      p.cards.forEach(function(c, ci){
+        var x=p.x, y=p.y+ci*STACK_OFF;
+        if(drag && drag.moving.indexOf(c)>=0){ x+=drag.dx; y+=drag.dy; }
+        var el=document.createElement("div");
+        var meta=META[c.type]||{emoji:"❓",label:c.type,cat:"res"};
+        el.className="card cat-"+meta.cat;
+        if(drag && drag.moving.indexOf(c)>=0) el.className+=" dragging";
+        el.style.left=x+"px"; el.style.top=y+"px"; el.style.zIndex=(pi*20+ci);
+        el.setAttribute("data-id",c.id);
+        var html='<div class="ce">'+meta.emoji+'</div><div class="cn">'+meta.label+'</div>';
+        if(meta.cat==="mon" || (meta.atk && (c.type==="herder"||c.type==="dog"))){
+          var hpc = c.hp!=null?c.hp:meta.hp;
+          var max = meta.hp;
+          var pct = clamp(Math.round(hpc/max*100),0,100);
+          html+='<div class="hpbar"><div class="hpfill" style="width:'+pct+'%"></div></div>';
+          if(c.type==="herder" && (c.atkBonus||0)>0){
+            html+='<div class="cb">⚔️+'+(c.atkBonus||0)+'</div>';
+          }
+        } else if(c.type==="herder" && c.fed!=null){
+          html+='<div class="cb">饱食 '+c.fed+'/'+FOOD_CAP+'</div>';
+        } else if(meta.note){
+          html+='<div class="cb">'+meta.note+'</div>';
+        }
+        el.innerHTML=html;
+        board.appendChild(el);
+      });
+    });
+  }
+
+  // ===================== HUD =====================
+  function fmtTime(s){ s=Math.max(0,Math.ceil(s)); var m=Math.floor(s/60), ss=s%60; return (m<10?"0":"")+m+":"+(ss<10?"0":"")+ss; }
+  function updateHUD(){
+    checkTasks();
+    $("dayStat").textContent="第 "+day+" 天";
+    var ph=$("phaseTag");
+    if(phase==="day"){ ph.textContent="☀️ 白天"; ph.className="stat"; ph.id="phaseTag"; ph.classList.add("day"); }
+    else { ph.textContent="🌙 夜晚"; ph.className="stat"; ph.id="phaseTag"; ph.classList.add("night"); }
+    $("timer").textContent=fmtTime(timeLeft);
+    $("goldStat").textContent="💰 ¥"+gold;
+    $("popStat").textContent="🧑 "+popCount()+"/"+popCap();
+    var herderFood=0; allCards().forEach(function(c){ if(c.type==="herder") herderFood+=(c.fed||0); });
+    $("foodStat").textContent="🍖 "+herderFood;
+    // 刷新统计
+    stats.herders=popCount(); stats.houses=countType("house"); stats.walls=countType("wall");
+    stats.smelters=countType("smelter"); stats.gold=gold;
+    stats.equipped = allCards().filter(function(c){return c.type==="herder" && (c.atkBonus||0)>0;}).length;
+  }
+
+  // ===================== 卡包 =====================
+  function buyPack(pack){
+    if(gold < pack.price){ toast("金币不足，需要 ¥"+pack.price); return; }
+    gold -= pack.price;
+    var cardsArr=[];
+    pack.items.forEach(function(it){ for(var i=0;i<it[1];i++) cardsArr.push(mk(it[0])); });
+    scatter(cardsArr);
+    render(); updateHUD(); saveGame();
+    toast("已购买「"+pack.name+"」");
+  }
+
+  // ===================== 任务 =====================
+  function checkTasks(){
+    TASKS.forEach(function(t){
+      if(tasksDone[t.id]) return;
+      if(t.check(stats)){ tasksDone[t.id]=true; gold+=t.rew; stats.gold=gold;
+        toast("✅ 任务完成：「"+t.name+"」 +¥"+t.rew); }
+    });
+  }
+
+  // ===================== 存档 =====================
+  function saveGame(){
+    try{
+      var data={ day:day, timeLeft:timeLeft, phase:phase, gold:gold,
+        seenCards:seenCards, tasksDone:tasksDone, lastSave:Date.now(),
+        piles:piles.map(function(p){
+          return {x:p.x,y:p.y, isPack:p.isPack,
+            cards:p.cards.map(function(c){ var o={type:c.type}; if(c.hp!=null)o.hp=c.hp; if(c.fed!=null)o.fed=c.fed; if(c.atkBonus)o.atkBonus=c.atkBonus; if(c.hpBonus)o.hpBonus=c.hpBonus; return o; })};
+        })};
+      localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    }catch(e){}
+  }
+  function loadGame(){
+    try{
+      var raw=localStorage.getItem(SAVE_KEY); if(!raw) return false;
+      var data=JSON.parse(raw);
+      piles=[]; nextId=1;
+      day=data.day||1; timeLeft=data.timeLeft||DAY_LEN; gold=data.gold||0;
+      seenCards=data.seenCards||{}; tasksDone=data.tasksDone||{};
+      (data.piles||[]).forEach(function(sp){
+        var cards=(sp.cards||[]).map(function(sc){
+          var c=mk(sc.type); if(sc.hp!=null)c.hp=sc.hp; if(sc.fed!=null)c.fed=sc.fed; if(sc.atkBonus)c.atkBonus=sc.atkBonus; if(sc.hpBonus)c.hpBonus=sc.hpBonus; return c; });
+        var p=makePile(sp.x,sp.y,cards); p.isPack=sp.isPack;
+      });
+      // 离线收益（仅在有房屋且离线较久时）
+      var elapsed=Math.max(0,(Date.now()-(data.lastSave||Date.now()))/1000);
+      if(elapsed>60 && countType("house")>0){
+        var off=Math.floor(elapsed/30); // 每30秒 ¥3
+        if(off>0){ gold+=off*3; showOffline(off*3, elapsed); }
+      }
+      return true;
+    }catch(e){ return false; }
+  }
+  function showOffline(amount, sec){
+    var ov=document.createElement("div"); ov.className="overlay";
+    ov.innerHTML='<div class="modal"><h2>🌙 离线收益</h2>'+
+      '<p>你离开了 '+Math.floor(sec/60)+' 分 '+Math.floor(sec%60)+' 秒，牧场帮你赚到了：</p>'+
+      '<p style="font-size:22px;font-weight:800;color:#c0392b;text-align:center;">+¥'+amount+'</p>'+
+      '<button class="close" id="offClose">收下</button></div>';
+    board.appendChild(ov);
+    $("offClose").onclick=function(){ ov.parentNode.removeChild(ov); };
+  }
+
+  // ===================== 弹窗（卡包/任务/图鉴/帮助/设置） =====================
+  function closeModal(ov){ if(ov && ov.parentNode){ ov.parentNode.removeChild(ov); } }
+  function openModal(html, opts){
+    opts = opts || {};
+    var ov=document.createElement("div"); ov.className="overlay"; ov.id="modalOverlay";
+    ov.innerHTML='<div class="modal">'+html+'</div>';
+    board.appendChild(ov);
+    // 关闭逻辑：点击背景 或 点 .close 按钮。
+    // 同时绑定 pointerup 与 click —— pointerup 在触屏下一定派发，
+    // 避免部分浏览器/WebView 吞掉 click 导致"关不掉"。
+    function tryClose(e){
+      var onBackdrop = (opts.dismissBackdrop!==false && e.target===ov);
+      var onCloseBtn = !!(e.target.closest && e.target.closest(".close"));
+      if(onBackdrop || onCloseBtn) closeModal(ov);
+    }
+    ov.addEventListener("click", tryClose);
+    ov.addEventListener("pointerup", tryClose);
+    return ov;
+  }
+  function showShop(){
+    var html='<h2>🎁 卡包商店</h2><p>用金币购买卡包，解锁新卡牌与配方。</p>';
+    PACKS.forEach(function(pk){
+      html+='<div class="shop-item"><div class="si-emoji">'+pk.emoji+'</div>'+
+        '<div class="si-info"><div class="si-name">'+pk.name+'</div>'+
+        '<div class="si-desc">'+pk.desc+'</div></div>'+
+        '<button class="si-buy" data-pack="'+pk.id+'">¥'+pk.price+'</button></div>';
+    });
+    var ov=openModal(html);
+    ov.querySelectorAll(".si-buy").forEach(function(b){
+      b.onclick=function(){
+        var pk=PACKS.find(function(p){return p.id===b.getAttribute("data-pack");});
+        buyPack(pk);
+      };
+    });
+  }
+  function showTasks(){
+    var html='<h2>📜 任务</h2>';
+    TASKS.forEach(function(t){
+      var done=!!tasksDone[t.id];
+      html+='<div class="task-item'+(done?" done":"")+'"><div class="t-check">'+(done?"✓":"")+'</div>'+
+        '<div class="t-name">'+t.name+'</div><div class="t-rew">+¥'+t.rew+'</div></div>';
+    });
+    html+='<button class="close" id="taskClose">关闭</button>';
+    var ov=openModal(html);
+    $("taskClose").onclick=function(){ closeModal(ov); };
+  }
+  function showCodex(){
+    var html='<h2>📖 卡牌图鉴</h2><p>已发现 '+Object.keys(seenCards).length+' / '+Object.keys(META).length+' 种</p><div class="codex-grid">';
+    Object.keys(META).forEach(function(t){
+      var seen=!!seenCards[t]; var m=META[t];
+      html+='<div class="codex-cell'+(seen?"":" locked")+'"><div class="cc-emoji">'+(seen?m.emoji:"❓")+'</div>'+
+        '<div class="cc-name">'+(seen?m.label:"未解锁")+'</div></div>';
+    });
+    html+='</div><button class="close" id="codexClose">关闭</button>';
+    var ov=openModal(html);
+    $("codexClose").onclick=function(){ closeModal(ov); };
+  }
+  function showHelp(){
+    var ov=openModal(
+      '<h2>🐮 牛牛牧场 · 玩法</h2>'+
+      '<p><b>核心</b>：把卡牌拖到一起"堆叠万物"，触发生产/建造/繁殖/战斗。</p>'+
+      '<p><b>怎么拖</b></p><ul>'+
+      '<li>按住<b>最底</b>一张 → 整堆一起挪。</li>'+
+      '<li>按住<b>中间</b>一张 → 只带走它和上面的。</li>'+
+      '<li>按住<b>最顶</b>一张 → 只拆出那张。</li></ul>'+
+      '<p><b>生产</b>：把 🧑‍🌾牧民 拖到 🌳树木/⛰️岩石/🌿蓝莓丛/🗻铁矿脉/💎金矿脉/🌱药田 上 → 自动产出资源（进度条）。</p>'+
+      '<p><b>喂食</b>：把 🫐蓝莓/🍞面包/🍖烤肉/🥗拼盘 拖到 牧民 上喂饱（每天每只需 1 餐，否则饿死）。</p>'+
+      '<p><b>建造</b>：把 2🪵+1🪨 堆到牧民上 → 🏠房屋（可繁殖）；3🪨 → 🧱城墙；更多建筑见卡牌图鉴。</p>'+
+      '<p><b>制作/冶炼/烹饪</b>：牧民+材料 可造 🗡️木剑/🛡️盾/⚒️工具；建 🔥冶炼厂 后炼铁锭；建 🍳厨房 后烤肉做面包。</p>'+
+      '<p><b>繁殖</b>：🏠房屋 + 2🧑‍🌾牧民 同堆 → 自动生出小牧民（房屋冷却 120 秒）。</p>'+
+      '<p><b>战斗</b>：🌙夜晚刷 🥷小偷/👹大盗，会自动扑向牧民；把 🐕牧羊犬/牧民 拖到怪物上迎战，击杀掉落金币。</p>'+
+      '<p><b>赚钱</b>：把可卖的卡（🪵🪨⚙️…）拖到 🏪市场 换金币，再去 🎁卡包 抽新卡。</p>'+
+      '<p>进度自动存档，关掉也能离线攒钱。</p>'+
+      '<button class="close" id="helpClose">知道啦</button>');
+    $("helpClose").onclick=function(){ closeModal(ov); };
+  }
+  function showSettings(){
+    var ov=openModal(
+      '<h2>⚙️ 设置</h2>'+
+      '<p>当前进度已自动保存。</p>'+
+      '<div class="row">'+
+      '<button class="btn alt" id="resetBtn">🗑 重置存档</button>'+
+      '<button class="close" id="closeSet">关闭</button>'+
+      '</div>');
+    $("resetBtn").onclick=function(){ localStorage.removeItem(SAVE_KEY); location.reload(); };
+    $("closeSet").onclick=function(){ closeModal(ov); };
+  }
+
+  // ===================== 事件绑定 =====================
+  board.addEventListener("pointerdown", onDown);
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp);
+  $("pauseBtn").onclick=function(){ if(gameOver) return; paused=!paused; this.textContent=paused?"▶":"⏸"; };
+  $("packBtn").onclick=function(){ if(!gameOver) showShop(); };
+  $("taskBtn").onclick=function(){ if(!gameOver) showTasks(); };
+  $("codexBtn").onclick=function(){ showCodex(); };
+  $("helpBtn").onclick=function(){ showHelp(); };
+  $("setBtn").onclick=function(){ showSettings(); };
+  window.addEventListener("beforeunload", saveGame);
+
+  // ===================== 开局 =====================
+  function newGame(){
+    var s=boardSize();
+    // 新手卡包（点击打开）
+    var pack=makePile(s.w/2-36, s.h/2-45, []);
+    pack.isPack=true;
+    pack.el=null;
+    // 渲染卡包
+    renderPack(pack);
+    // 点击打开
+    pack._open=function(){
+      if(pack._done) return; pack._done=true;
+      var oldEl=board.querySelector(".packobj"); if(oldEl) oldEl.remove();
+      removePile(pack);
+      var cards=[mk("herder"),mk("herder"),mk("dog"),mk("tree"),mk("rock"),mk("bush"),mk("blueberry"),mk("blueberry"),mk("wood"),mk("stone"),mk("branch")];
+      cards[0].fed=3; cards[1].fed=3; // 给新手牧民一点食物缓冲
+      scatter(cards);
+      render(); updateHUD();
+      toast("🎁 新手卡包已打开！拖牧民到资源上开始生产");
+    };
+    toast("👆 点击中间的新手卡包开始游戏");
+  }
+  function renderPack(pack){
+    // 用单独元素渲染，不随 cards 循环
+    var old=board.querySelector(".packobj"); if(old) old.remove();
+    var el=document.createElement("div");
+    el.className="packobj";
+    el.style.cssText="position:absolute;width:80px;height:96px;border-radius:16px;background:linear-gradient(180deg,#fff,#fff3cf);border:2px solid var(--gold);box-shadow:0 4px 10px rgba(0,0,0,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;user-select:none;text-align:center;z-index:6;";
+    el.innerHTML='<div style="font-size:34px">🎁</div><div style="font-size:12px;font-weight:800;margin-top:4px">新手卡包</div>';
+    el.style.left=pack.x+"px"; el.style.top=pack.y+"px";
+    // 打开逻辑统一由 onDown 处理（已在其中识别 .packobj）；这里保留 onclick 作为兜底
+    el.onclick=function(){ if(pack._open) pack._open(); };
+    board.appendChild(el);
+  }
+
+  // 初始化
+  if(!loadGame()){
+    newGame();
+  } else {
+    if(phase==="night") app.classList.add("night");
+  }
+  // 卡包元素常驻：如被意外移除则补回
+  setInterval(function(){
+    if(paused||gameOver) return;
+    var pk=piles.find(function(p){return p.isPack;});
+    if(pk && !board.querySelector(".packobj")) renderPack(pk);
+  }, 800);
+
+  updateHUD(); render();
+})();
+</script>
+</body>
+</html>

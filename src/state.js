@@ -1,31 +1,38 @@
 // 游戏数据层：全局状态 + 堆(pile)/卡(card) 的增删查改
 // 所有函数都以 game 作为上下文：game.state 持有状态，game.boardSize() 提供棋盘尺寸
 
-import { CARD_W, CARD_H, STACK_OFF, DAY_LEN } from './config.js';
+import { CARD_W, CARD_H, STACK_OFF, DAY_LEN, META, MAX_STACK } from './config.js';
 import { rand, clamp } from './utils.js';
 
 export function createState() {
   return {
-    piles: [],            // [{id, x, y, cards:[cardObj,...], isPack?}]
+    piles: [],            // [{id, x, y, cards:[cardObj,...], cd, isPack?}]
     nextId: 1,
     day: 1,
     timeLeft: DAY_LEN,
+    phase: "day",         // "day" | "night"
     paused: false,
     gameOver: false,
-    busy: false,          // 产出/喂食进行中，计时暂停
-    bankDeposit: 0,
-    drag: null
+    gold: 0,
+    drag: null,
+    seenCards: {},        // 图鉴：见过的卡 type
+    tasksDone: {},        // 已完成任务 id
+    stats: { herders: 0, houses: 0, walls: 0, kills: 0, totalWood: 0, gold: 0, smelters: 0, equipped: 0 },
+    nightSpawned: false,  // 本夜是否已刷怪
+    lastSave: Date.now()
   };
 }
 
-export function mk(game, type, value) {
-  const c = { id: game.state.nextId++, type, fedToday: 0 };
-  if (value != null) c.value = value;
+export function mk(game, type) {
+  const c = { id: game.state.nextId++, type };
+  if (META[type].hp) c.hp = META[type].hp;
+  if (type === "herder") c.fed = 0;
+  if (META[type].charges) c.charges = META[type].charges; // 资源点采集次数
   return c;
 }
 
 export function makePile(game, x, y, cards) {
-  const p = { id: game.state.nextId++, x, y, cards: cards || [] };
+  const p = { id: game.state.nextId++, x, y, cards: cards || [], cd: 0 };
   game.state.piles.push(p);
   return p;
 }
@@ -48,9 +55,9 @@ export function allCards(game) {
   return r;
 }
 
-export function countMoneyOnBoard(game) {
+export function countType(game, type) {
   let n = 0;
-  allCards(game).forEach(c => { if (c.type === "money") n += (c.value || 1); });
+  allCards(game).forEach(c => { if (c.type === type) n++; });
   return n;
 }
 
@@ -73,7 +80,7 @@ export function pileAtPoint(game, x, y, exclude) {
   const piles = game.state.piles;
   for (let i = piles.length - 1; i >= 0; i--) {
     const p = piles[i];
-    if (p === exclude) continue;
+    if (p === exclude || p.isPack) continue;
     for (let j = 0; j < p.cards.length; j++) {
       const cx = p.x, cy = p.y + j * STACK_OFF;
       if (x >= cx && x <= cx + CARD_W && y >= cy && y <= cy + CARD_H) return p;
@@ -86,16 +93,17 @@ export function pileAtPoint(game, x, y, exclude) {
 export function scatter(game, cardsArr) {
   const s = game.boardSize();
   cardsArr.forEach(c => {
+    markSeen(game, c.type);
     const x = rand(8, Math.max(20, s.w - CARD_W - 8));
     const y = rand(8, Math.max(20, s.h - CARD_H - 64));
     makePile(game, x, y, [c]);
   });
 }
 
-// 在某堆附近生成新堆（产出物落点）
-export function spawnNear(game, pile, cardsArr) {
-  const s = game.boardSize();
-  const x = clamp(pile.x + 34, 6, s.w - CARD_W - 6);
-  const y = clamp(pile.y + 34, 6, s.h - CARD_H - 60);
-  makePile(game, x, y, cardsArr);
-}
+export function markSeen(game, type) { game.state.seenCards[type] = true; }
+
+// 人口上限 = 4 * 房屋数
+export function popCap(game) { return 4 * countType(game, "house"); }
+export function popCount(game) { return countType(game, "herder"); }
+// 单堆上限：有仓库时 32，否则 MAX_STACK
+export function maxStack(game) { return countType(game, "warehouse") > 0 ? 32 : MAX_STACK; }

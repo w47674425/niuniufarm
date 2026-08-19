@@ -1,89 +1,134 @@
-// 弹窗层：每日结算 / 游戏结束 / 帮助（原单文件中的相关区块）
+// 弹窗层：卡包商店 / 任务 / 图鉴 / 帮助 / 设置 / 游戏结束（对齐资料库准绳版「弹窗」区块）
 
-import { META } from './config.js';
+import { META, PACKS, TASKS, SAVE_KEY } from './config.js';
 import { rand } from './utils.js';
 import { mk, makePile } from './state.js';
 import { render, updateHUD, toast } from './render.js';
+import { buyPack } from './systems.js';
 
-// 每日结算弹窗（暂停计时，点「开始下一天」触发 game.runDayEnd）
-export function showDayEndModal(game) {
-  game.state.paused = true;
+function closeModal(ov) { if (ov && ov.parentNode) { ov.parentNode.removeChild(ov); } }
+
+// 通用弹窗：点背景或 .close 关闭（click + pointerup 双绑定，兼容触屏/WebView）
+function openModal(game, html, opts) {
+  opts = opts || {};
   const ov = document.createElement("div");
-  ov.className = "overlay"; ov.id = "dayOverlay";
-  ov.innerHTML =
-    '<div class="modal">' +
-    '<h2>🌙 第 ' + game.state.day + ' 天已结束</h2>' +
-    '<p>员工会自动在农场里找 1 个汉堡吃掉；没找到汉堡的员工会饿死。</p>' +
-    '<p>牛今天吃的草料会清零，明天可以再吃。</p>' +
-    '<div class="row"><button class="btn" id="nextDayBtn">▶ 开始第 ' + (game.state.day + 1) + ' 天</button></div>' +
-    '</div>';
+  ov.className = "overlay"; ov.id = "modalOverlay";
+  ov.innerHTML = '<div class="modal">' + html + '</div>';
   game.board.appendChild(ov);
-  document.getElementById("nextDayBtn").onclick = function () {
-    if (ov.parentNode) ov.parentNode.removeChild(ov);
-    game.runDayEnd();
-  };
+  function tryClose(e) {
+    const onBackdrop = (opts.dismissBackdrop !== false && e.target === ov);
+    const onCloseBtn = !!(e.target.closest && e.target.closest(".close"));
+    if (onBackdrop || onCloseBtn) closeModal(ov);
+  }
+  ov.addEventListener("click", tryClose);
+  ov.addEventListener("pointerup", tryClose);
+  return ov;
 }
 
-// 游戏结束（全员阵亡）
+// 卡包商店
+export function showShop(game) {
+  let html = '<h2>🎁 卡包商店</h2><p>用金币购买卡包，解锁新卡牌与配方。</p>';
+  PACKS.forEach(pk => {
+    html += '<div class="shop-item"><div class="si-emoji">' + pk.emoji + '</div>' +
+      '<div class="si-info"><div class="si-name">' + pk.name + '</div>' +
+      '<div class="si-desc">' + pk.desc + '</div></div>' +
+      '<button class="si-buy" data-pack="' + pk.id + '">¥' + pk.price + '</button></div>';
+  });
+  const ov = openModal(game, html);
+  ov.querySelectorAll(".si-buy").forEach(b => {
+    b.onclick = function () {
+      const pk = PACKS.find(p => p.id === b.getAttribute("data-pack"));
+      buyPack(game, pk);
+    };
+  });
+}
+
+// 任务列表
+export function showTasks(game) {
+  let html = '<h2>📜 任务</h2>';
+  TASKS.forEach(t => {
+    const done = !!game.state.tasksDone[t.id];
+    html += '<div class="task-item' + (done ? " done" : "") + '"><div class="t-check">' + (done ? "✓" : "") + '</div>' +
+      '<div class="t-name">' + t.name + '</div><div class="t-rew">+¥' + t.rew + '</div></div>';
+  });
+  html += '<button class="close" id="taskClose">关闭</button>';
+  const ov = openModal(game, html);
+  document.getElementById("taskClose").onclick = function () { closeModal(ov); };
+}
+
+// 卡牌图鉴
+export function showCodex(game) {
+  let html = '<h2>📖 卡牌图鉴</h2><p>已发现 ' + Object.keys(game.state.seenCards).length + ' / ' + Object.keys(META).length + ' 种</p><div class="codex-grid">';
+  Object.keys(META).forEach(t => {
+    const seen = !!game.state.seenCards[t];
+    const m = META[t];
+    html += '<div class="codex-cell' + (seen ? "" : " locked") + '"><div class="cc-emoji">' + (seen ? m.emoji : "❓") + '</div>' +
+      '<div class="cc-name">' + (seen ? m.label : "未解锁") + '</div></div>';
+  });
+  html += '</div><button class="close" id="codexClose">关闭</button>';
+  const ov = openModal(game, html);
+  document.getElementById("codexClose").onclick = function () { closeModal(ov); };
+}
+
+// 帮助 / 玩法说明
+export function showHelp(game) {
+  const ov = openModal(game,
+    '<h2>🐮 牛牛牧场 · 玩法</h2>' +
+    '<p><b>核心</b>：把卡牌拖到一起"堆叠万物"，触发生产/建造/繁殖/战斗。</p>' +
+    '<p><b>怎么拖</b></p><ul>' +
+    '<li>按住<b>最底</b>一张 → 整堆一起挪。</li>' +
+    '<li>按住<b>中间</b>一张 → 只带走它和上面的。</li>' +
+    '<li>按住<b>最顶</b>一张 → 只拆出那张。</li></ul>' +
+    '<p><b>生产</b>：把 🧑‍🌾牧民 拖到 🌳树木/⛰️岩石/🌿蓝莓丛/🗻铁矿脉/💎金矿脉/🌱药田 上 → 自动产出资源（进度条）。</p>' +
+    '<p><b>喂食</b>：把 🫐蓝莓/🍞面包/🍖烤肉/🥗拼盘 拖到 牧民 上喂饱（每天每只需 1 餐，否则饿死）。</p>' +
+    '<p><b>建造</b>：把 2🪵+1🪨 堆到牧民上 → 🏠房屋（可繁殖）；3🪨 → 🧱城墙；更多建筑见卡牌图鉴。</p>' +
+    '<p><b>制作/冶炼/烹饪</b>：牧民+材料 可造 🗡️木剑/🛡️盾/⚒️工具；建 🔥冶炼厂 后炼铁锭；建 🍳厨房 后烤肉做面包。</p>' +
+    '<p><b>繁殖</b>：🏠房屋 + 2🧑‍🌾牧民 同堆 → 自动生出小牧民（房屋冷却 120 秒）。</p>' +
+    '<p><b>战斗</b>：🌙夜晚刷 🥷小偷/👹大盗，会自动扑向牧民；把 🐕牧羊犬/牧民 拖到怪物上迎战，击杀掉落金币。</p>' +
+    '<p><b>赚钱</b>：把可卖的卡（🪵🪨⚙️…）拖到 🏪市场 换金币，再去 🎁卡包 抽新卡。</p>' +
+    '<p>进度自动存档，关掉也能离线攒钱。</p>' +
+    '<button class="close" id="helpClose">知道啦</button>');
+  document.getElementById("helpClose").onclick = function () { closeModal(ov); };
+}
+
+// 设置
+export function showSettings(game) {
+  const ov = openModal(game,
+    '<h2>⚙️ 设置</h2>' +
+    '<p>当前进度已自动保存。</p>' +
+    '<div class="row">' +
+    '<button class="btn alt" id="resetBtn">🗑 重置存档</button>' +
+    '<button class="close" id="closeSet">关闭</button>' +
+    '</div>');
+  document.getElementById("resetBtn").onclick = function () { localStorage.removeItem(SAVE_KEY); location.reload(); };
+  document.getElementById("closeSet").onclick = function () { closeModal(ov); };
+}
+
+// 游戏结束（全员饿死）
 export function endGame(game) {
   game.state.gameOver = true;
   const ov = document.createElement("div");
   ov.className = "overlay"; ov.id = "overOverlay";
   ov.innerHTML =
     '<div class="modal adbox">' +
-    '<h2>🪦 本轮结束</h2>' +
-    '<p>所有员工都饿死啦！</p>' +
-    '<p style="color:#2e86de;font-weight:800;">看广告可复活 1 名员工（附赠 1 汉堡）</p>' +
+    '<h2>🪦 牧场荒废了</h2>' +
+    '<p>所有牧民都饿死啦！</p>' +
+    '<p style="color:#2e86de;font-weight:800;">看广告可复活 2 名牧民（附赠食物）</p>' +
     '<div class="row">' +
-    '<button class="btn" id="adBtn">📺 看广告复活</button>' +
+    '<button class="btn gold" id="adBtn">📺 看广告复活</button>' +
     '<button class="btn alt" id="restartBtn">🔄 重新开始</button>' +
     '</div></div>';
   game.board.appendChild(ov);
   document.getElementById("adBtn").onclick = function () {
     const box = ov.querySelector(".modal");
-    box.innerHTML = '<h2>📺 广告播放中…</h2><div class="spinner"></div><p>复活 1 名员工，请稍候</p>';
+    box.innerHTML = '<h2>📺 广告播放中…</h2><div class="spinner"></div><p>复活牧民，请稍候</p>';
     setTimeout(function () {
       const s = game.boardSize();
-      makePile(game, rand(40, s.w - 120), rand(40, s.h - 180), [mk(game, "employee"), mk(game, "burger")]);
+      makePile(game, rand(40, s.w - 140), rand(40, s.h - 200), [mk(game, "herder"), mk(game, "herder"), mk(game, "bread")]);
       game.state.gameOver = false;
       if (ov.parentNode) ov.parentNode.removeChild(ov);
       render(game); updateHUD(game);
-      toast(game, "员工已复活，记得留汉堡！");
     }, 1600);
   };
-  document.getElementById("restartBtn").onclick = function () { location.reload(); };
-}
-
-// 帮助 / 玩法说明
-export function showHelp(game) {
-  const ov = document.createElement("div");
-  ov.className = "overlay";
-  ov.innerHTML =
-    '<div class="modal">' +
-    '<h2>🐮 牛牛农场 · 玩法</h2>' +
-    '<p><b>目标</b>：赚钱抽卡包 → 雇员工 → 养牛卖牛，经营农场。</p>' +
-    '<p><b>怎么拿/拖</b></p>' +
-    '<ul>' +
-    '<li>按住<b>最底下</b>一张 → 整堆一起挪动。</li>' +
-    '<li>按住<b>中间</b>一张 → 只带走这张和它上面的。</li>' +
-    '<li>按住<b>最顶上</b>一张 → 只拆出那一张。</li>' +
-    '</ul>' +
-    '<p><b>产出（必须员工拖到卡上，2 秒进度条）</b></p>' +
-    '<ul>' +
-    '<li>👷员工 拖到 🌾草堆 → 3🍃草料（草堆消失）</li>' +
-    '<li>👷员工 拖到 🪵树桩 → 3🪵木头（树桩消失）</li>' +
-    '<li>👷员工 拖到 4🪵木头 → 1🚧围栏（木头消失）</li>' +
-    '<li>👷员工 拖到 🚧围栏 → 1💳银行卡（<b>仅消耗1张围栏</b>，其余围栏与员工保留）</li>' +
-    '</ul>' +
-    '<p><b>喂牛（每只牛无论形态，每天最多吃 3 草料）</b></p>' +
-    '<ul>' +
-    '<li>🍃草料 拖到 🐮牛（单独牛）→ 牛吃草，每棵1秒，吃满3棵长一阶（反向不行）</li>' +
-    '<li>🐮牛 拖到 🚧围栏 → 组成<b>牧场</b>；再往牧场里叠 🍃草料，每天<b>自动</b>消耗3草料喂牛长大（围栏不消失）</li>' +
-    '<li>牛犊→少年→青年→壮年→中年→老年，阶段越高卖越贵</li>' +
-    '</ul>' +
-    '<p>卡包（均 ¥5）：招聘/牛牛(1牛犊)/建筑/食物/🌾草堆(2草堆)。每天结束弹窗提醒；员工自动吃1汉堡，没汉堡饿死。把牛拖到 🏪市场 卖钱。</p>' +
-    '<button class="close" id="helpClose">知道啦</button>' +
-    '</div>';
-  game.board.appendChild(ov);
-  document.getElementById("helpClose").onclick = function () { if (ov.parentNode) ov.parentNode.removeChild(ov); };
+  document.getElementById("restartBtn").onclick = function () { localStorage.removeItem(SAVE_KEY); location.reload(); };
 }
