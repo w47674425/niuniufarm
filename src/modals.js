@@ -1,6 +1,6 @@
 // 弹窗层：卡包商店 / 任务 / 图鉴 / 帮助 / 设置 / 游戏结束（对齐资料库准绳版「弹窗」区块）
 
-import { META, PACKS, TASKS } from './config.js';
+import { META, PACKS, TASKS, foodCapOf } from './config.js';
 import { rand } from './utils.js';
 import { mk, makePile } from './state.js';
 import { render, updateHUD, toast } from './render.js';
@@ -80,7 +80,9 @@ export function showHelp(game) {
     '<li>按住<b>中间</b>一张 → 只带走它和上面的。</li>' +
     '<li>按住<b>最顶</b>一张 → 只拆出那张。</li></ul>' +
     '<p><b>生产</b>：把 🧑‍🌾牧民 拖到 🌳树木/⛰️岩石/🌿蓝莓丛/🗻铁矿脉/💎金矿脉/🌱药田 上 → 自动产出资源（进度条）。</p>' +
-    '<p><b>喂食</b>：把 🫐蓝莓/🍞面包/🍖烤肉/🥗拼盘 拖到 牧民 上喂饱（每天每只需 1 餐，否则饿死）。</p>' +
+    '<p><b>喂食</b>：把 🫐蓝莓/🍞面包/🍖烤肉/🥗拼盘 拖到 🧑‍🌾牧民 或 🐕牧羊犬 上喂饱（每天每单位消耗 1 餐，否则饿死）。</p>' +
+    '<p><b>自动进食</b>：每天结算时，饱食不足的单位会自动吃 1 个自己偏好的食物——🧑‍🌾牧民吃 🫐蓝莓，🐕牧羊犬吃 🥩生肉；场上没有对应食物才会饿死。</p>' +
+    '<p><b>饱食上限</b>：各单位上限不同（牧民 10、牧羊犬 8），喂食/进食都受各自上限约束。</p>' +
     '<p><b>建造</b>：把 2🪵+1🪨 堆到牧民上 → 🏠房屋（可繁殖）；3🪨 → 🧱城墙；更多建筑见卡牌图鉴。</p>' +
     '<p><b>制作/冶炼/烹饪</b>：牧民+材料 可造 🗡️木剑/🛡️盾/⚒️工具；建 🔥冶炼厂 后炼铁锭；建 🍳厨房 后烤肉做面包。</p>' +
     '<p><b>繁殖</b>：🏠房屋 + 2🧑‍🌾牧民 同堆 → 自动生出小牧民（房屋冷却 120 秒）。</p>' +
@@ -124,7 +126,9 @@ export function endGame(game) {
     box.innerHTML = '<h2>📺 广告播放中…</h2><div class="spinner"></div><p>复活牧民，请稍候</p>';
     setTimeout(function () {
       const s = game.boardSize();
-      makePile(game, rand(40, s.w - 140), rand(40, s.h - 200), [mk(game, "herder"), mk(game, "herder"), mk(game, "bread")]);
+      const h1 = mk(game, "herder"), h2 = mk(game, "herder");
+      h1.fed = foodCapOf("herder"); h2.fed = foodCapOf("herder"); // 复活即满饱食，避免立刻饿死
+      makePile(game, rand(40, s.w - 140), rand(40, s.h - 200), [h1, h2, mk(game, "bread")]);
       game.state.gameOver = false;
       if (ov.parentNode) ov.parentNode.removeChild(ov);
       render(game); updateHUD(game);

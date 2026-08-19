@@ -1,8 +1,8 @@
 // 堆行为规则层（纯逻辑，不碰 DOM）：配方匹配 / 堆行为解释 / 执行 / 战斗
 // 原「合并 / 产出 / 喂草」规则已由数据驱动的 RECIPES 配方表取代（对齐资料库准绳版）
 
-import { META, RECIPES, FOOD_CAP, COMBAT_SEC } from './config.js';
-import { mk, countType, removeCardObj, markSeen, maxStack } from './state.js';
+import { META, RECIPES, COMBAT_SEC, foodCapOf } from './config.js';
+import { mk, countType, removeCardObj, markSeen, maxStack, spawnNear } from './state.js';
 
 export function isFood(type) { return !!(META[type] && META[type].cat === "food"); }
 export function isSellable(type) { return !!(META[type] && META[type].sale > 0); }
@@ -74,14 +74,25 @@ function applyRecipe(game, p, r) {
   }
   // 产出（堆叠上限保护）
   if (r.kind === "produce" && p.cards.length >= maxStack(game)) { return; }
-  r.out.forEach(o => {
-    for (let i = 0; i < o.n; i++) {
-      const c = mk(game, o.type);
-      p.cards.push(c);
-      markSeen(game, o.type);
-      if (o.type === "wood") game.state.stats.totalWood++;
-    }
-  });
+  // 采集/生产类配方：生成物掉落到附近空白处（spawnNear + 掉落动画）
+  if (r.kind === "produce") {
+    const outCards = [];
+    r.out.forEach(o => { for (let i = 0; i < o.n; i++) outCards.push(mk(game, o.type)); });
+    outCards.forEach(c => { markSeen(game, c.type); if (c.type === "wood") game.state.stats.totalWood++; });
+    const target = spawnNear(game, p, outCards);
+    // 记录掉落动画（由渲染层在 tick 中消费）
+    if (!game.state._drops) game.state._drops = [];
+    game.state._drops.push({ from: p, to: target });
+  } else {
+    r.out.forEach(o => {
+      for (let i = 0; i < o.n; i++) {
+        const c = mk(game, o.type);
+        p.cards.push(c);
+        markSeen(game, o.type);
+        if (o.type === "wood") game.state.stats.totalWood++;
+      }
+    });
+  }
   // 资源点采集次数：每次采集 -1，归零即消耗消失（仅采集类配方：输入含 node 卡）
   const rInputsNode = Object.keys(r.in).some(k => META[k] && META[k].cat === "node" && META[k].charges);
   if (r.kind === "produce" && rInputsNode) {
@@ -100,7 +111,7 @@ function applyRecipe(game, p, r) {
   if (r.kind === "eat" || r.kind === "potion") {
     const h = p.cards.find(c => c.type === "herder");
     if (h) {
-      if (r.foodGain) { h.fed = Math.min(FOOD_CAP, (h.fed || 0) + r.foodGain); toast(game, "🍽 " + r.name + "：饱食 " + h.fed); }
+      if (r.foodGain) { h.fed = Math.min(foodCapOf(h.type), (h.fed || 0) + r.foodGain); toast(game, "🍽 " + r.name + "：饱食 " + h.fed); }
       if (r.hpGain) { if (h.hp == null) h.hp = META.herder.hp; h.hp += r.hpGain; toast(game, "❤️ " + r.name + "：血量+" + r.hpGain); }
     }
   }

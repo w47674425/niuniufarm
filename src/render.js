@@ -1,6 +1,6 @@
 // 渲染层：把状态画到 DOM 上（对齐资料库准绳版「渲染 / HUD」区块）
 
-import { CARD_W, CARD_H, STACK_OFF, META, FOOD_CAP } from './config.js';
+import { CARD_W, CARD_H, STACK_OFF, META, foodCapOf } from './config.js';
 import { clamp } from './utils.js';
 import { allCards, countType, popCap, popCount } from './state.js';
 import { pileAction } from './merge.js';
@@ -22,7 +22,7 @@ export function updateHUD(game) {
   game.refs.goldStat.textContent = "💰 ¥" + st.gold;
   game.refs.popStat.textContent = "🧑 " + popCount(game) + "/" + popCap(game);
   let herderFood = 0;
-  allCards(game).forEach(c => { if (c.type === "herder") herderFood += (c.fed || 0); });
+  allCards(game).forEach(c => { if (META[c.type] && META[c.type].cat === "unit") herderFood += (c.fed || 0); });
   game.refs.foodStat.textContent = "🍖 " + herderFood;
   // 刷新统计（任务依赖）
   st.stats.herders = popCount(game);
@@ -87,8 +87,10 @@ export function render(game) {
         if (c.type === "herder" && (c.atkBonus || 0) > 0) {
           html += '<div class="cb">⚔️+' + (c.atkBonus || 0) + '</div>';
         }
-      } else if (c.type === "herder" && c.fed != null) {
-        html += '<div class="cb">饱食 ' + c.fed + '/' + FOOD_CAP + '</div>';
+      }
+      // 所有单位显示饱食度（上限取该单位自身配置）
+      if (meta.cat === "unit" && c.fed != null) {
+        html += '<div class="cb">饱食 ' + c.fed + '/' + foodCapOf(c.type) + '</div>';
       } else if (meta.cat === "node" && meta.charges) {
         const left = (c.charges != null ? c.charges : meta.charges);
         html += '<div class="cb">可采 ' + left + ' 次</div>';
@@ -115,4 +117,23 @@ export function renderPack(game, pack) {
   // 打开逻辑统一由 onDown 处理（已在其中识别 .packobj）；这里保留 onclick 作为兜底
   el.onclick = function () { if (pack._open) pack._open(); };
   board.appendChild(el);
+}
+
+// 掉落动画：从源堆位置飞出一个 emoji 到目标堆（CSS transition 抛物线感）
+export function playDrop(game, from, to) {
+  const board = game.board;
+  const emo = META[to.cards[to.cards.length - 1]?.type]?.emoji || "✨";
+  const el = document.createElement("div");
+  el.className = "drop-fx";
+  el.textContent = emo;
+  el.style.left = (from.x + CARD_W / 2 - 14) + "px";
+  el.style.top = (from.y - 18) + "px";
+  board.appendChild(el);
+  // 双 rAF 确保 transition 生效
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    el.style.left = (to.x + CARD_W / 2 - 14) + "px";
+    el.style.top = (to.y - 18) + "px";
+    el.classList.add("fly");
+  }));
+  setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 650);
 }

@@ -26,7 +26,7 @@ export function createState() {
 export function mk(game, type) {
   const c = { id: game.state.nextId++, type };
   if (META[type].hp) c.hp = META[type].hp;
-  if (type === "herder") c.fed = 0;
+  if (META[type].cat === "unit") c.fed = 0; // 所有单位（牧民/牧羊犬）都有饱食度
   if (META[type].charges) c.charges = META[type].charges; // 资源点采集次数
   return c;
 }
@@ -107,3 +107,26 @@ export function popCap(game) { return 4 * countType(game, "house"); }
 export function popCount(game) { return countType(game, "herder"); }
 // 单堆上限：有仓库时 32，否则 MAX_STACK
 export function maxStack(game) { return countType(game, "warehouse") > 0 ? 32 : MAX_STACK; }
+
+// 在某堆附近寻找空白处生成新堆（采集产物掉落用）
+// 尝试围绕源堆随机偏转，直到落点不与任何堆（含源堆）重叠；最多尝试 12 次，兜底取最近一次候选
+export function spawnNear(game, sourcePile, cardsArr) {
+  const s = game.boardSize();
+  let bestX = null, bestY = null, bestScore = 1e9;
+  for (let i = 0; i < 12; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const dist = 60 + Math.random() * 70;
+    const x = clamp(sourcePile.x + Math.cos(ang) * dist, 6, s.w - CARD_W - 6);
+    const y = clamp(sourcePile.y + Math.sin(ang) * dist, 6, s.h - CARD_H - 60);
+    // 评分：与已有堆（含源堆）的重叠惩罚，重叠越少越好
+    let overlap = 0;
+    game.state.piles.forEach(p => {
+      if (p.isPack) return;
+      if (x < p.x + CARD_W + 6 && x + CARD_W + 6 > p.x && y < p.y + CARD_H + 6 && y + CARD_H + 6 > p.y) overlap += 1;
+    });
+    const score = overlap * 1000 + (x - sourcePile.x) * (x - sourcePile.x) + (y - sourcePile.y) * (y - sourcePile.y);
+    if (overlap === 0) { bestX = x; bestY = y; bestScore = score; break; } // 找到无重叠位置
+    if (score < bestScore) { bestScore = score; bestX = x; bestY = y; }   // 记录候选
+  }
+  return makePile(game, bestX, bestY, cardsArr);
+}

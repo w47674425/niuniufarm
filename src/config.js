@@ -9,7 +9,6 @@ export const MON_SPEED = 14;     // 怪物每 TICK 移动像素
 export const ENGAGE_DIST = 64;   // 怪物与防御者交战距离
 export const MAX_STACK = 16;     // 单堆基础上限（有仓库时提高到 32）
 export const COMBAT_SEC = 2;     // 战斗伤害结算间隔(秒)
-export const FOOD_CAP = 12;      // 牧民饱食上限
 export const SAVE_KEY = "niuniu_ranch_save_v1";
 
 // ===================== 卡牌数据 =====================
@@ -17,10 +16,12 @@ export const SAVE_KEY = "niuniu_ranch_save_v1";
 // 资源点的产出改由 RECIPES 表驱动（见后文）
 // produces: 该资源点被牧民工作时产出的卡 type；sec: 产出周期(秒)
 // atk/hp: 战斗；food: 食物值(喂食)；sale: 出售价(0=不可卖)
+// diet: 单位饥饿时自动进食的物资 type（每日结算：饱食不足则吃一个 diet 物资，没有则死亡）
+// foodCap: 该单位饱食度上限（不同单位可不同，不再用全局 FOOD_CAP）
 export const META = {
   // —— 单位 ——
-  herder:{cat:"unit", emoji:"🧑‍🌾", label:"牧民", atk:1, hp:5, sale:0},
-  dog:   {cat:"unit", emoji:"🐕", label:"牧羊犬", atk:4, hp:15, sale:0},
+  herder:{cat:"unit", emoji:"🧑‍🌾", label:"牧民", atk:1, hp:5, sale:0, diet:"blueberry", foodCap:10},
+  dog:   {cat:"unit", emoji:"🐕", label:"牧羊犬", atk:4, hp:15, sale:0, diet:"rawmeat", foodCap:8},
 // —— 资源点（牧民叠上去按配方产出，节点本身不消耗）——
 // charges: 采集次数，每次产出后 -1，归零即消耗消失（暂定统一 1）
 tree:     {cat:"node", emoji:"🌳", label:"树木", note:"牧民→木头×2 树枝×1", sale:0, charges:1},
@@ -166,3 +167,9 @@ export const RECIPES = [
   {id:"gather_gold", name:"采金矿", in:{herder:1, gold:1}, out:[{type:"goldore",n:1}], sec:15, consume:false, kind:"produce", label:"💎 开采中"},
   {id:"gather_herb", name:"采药草", in:{herder:1, herbfield:1}, out:[{type:"herb",n:1}], sec:4, consume:false, kind:"produce", label:"🌱 采集中"}
 ];
+
+// 取单位饱食度上限：META 中 foodCap 缺失时回退到 1（兜底）
+export function foodCapOf(type) {
+  const m = META[type];
+  return m && m.foodCap ? m.foodCap : 1;
+}

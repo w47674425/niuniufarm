@@ -1,10 +1,10 @@
 // 输入层：指针拖拽与堆叠交互（对齐资料库准绳版「拖拽交互」区块）
 
-import { CARD_W, CARD_H, STACK_OFF } from './config.js';
+import { CARD_W, CARD_H, STACK_OFF, META } from './config.js';
 import { clamp } from './utils.js';
 import { makePile, pileOf, allCards, detach, pileAtPoint } from './state.js';
 import { render, updateHUD } from './render.js';
-import { sellCards, feedHerder } from './systems.js';
+import { sellCards, feedUnit } from './systems.js';
 import { isFood } from './merge.js';
 
 export function bindDrag(game) {
@@ -63,10 +63,11 @@ export function bindDrag(game) {
 
     const target = pileAtPoint(game, cx, cy, d.pile);
     if (target) {
-      // 喂食：移动方是食物，目标堆有牧民
-      if (d.moving.some(c => isFood(c.type)) && target.cards.some(c => c.type === "herder")) {
+      // 喂食：移动方是食物，目标堆有单位（牧民/牧羊犬）
+      const targetUnit = target.cards.some(c => META[c.type] && META[c.type].cat === "unit");
+      if (d.moving.some(c => isFood(c.type)) && targetUnit) {
         detach(game, d.moving, d.pile);
-        feedHerder(game, d, target);
+        feedUnit(game, d, target);
         // 没喂完的食物卡（含吃撑了的）叠到目标堆
         if (d.moving.length > 0) target.cards = target.cards.concat(d.moving);
         render(game); updateHUD(game);

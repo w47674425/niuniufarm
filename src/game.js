@@ -6,7 +6,7 @@ import { bindDrag } from './drag.js';
 import { tick, loadGame, saveGame, checkTasks } from './systems.js';
 import { showShop, showTasks, showCodex, showHelp, showSettings } from './modals.js';
 import { bindToast } from './merge.js';
-import { TICK_MS, SAVE_KEY } from './config.js';
+import { TICK_MS, SAVE_KEY, foodCapOf } from './config.js';
 
 export class Game {
   constructor(refs) {
@@ -76,8 +76,9 @@ export class Game {
       if (oldEl) oldEl.remove();
       removePile(this, pack);
       const cards = [mk(this, "herder"), mk(this, "herder"), mk(this, "dog"), mk(this, "tree"), mk(this, "rock"), mk(this, "bush"), mk(this, "blueberry"), mk(this, "blueberry"), mk(this, "wood"), mk(this, "stone"), mk(this, "branch")];
-      cards[0].fed = 3;
-      cards[1].fed = 3; // 给新手牧民一点食物缓冲
+      cards[0].fed = foodCapOf("herder");
+      cards[1].fed = foodCapOf("herder"); // 给新手牧民一点食物缓冲
+      cards[2].fed = foodCapOf("dog");    // 牧羊犬同样满饱食开局
       scatter(this, cards);
       this.render();
       this.updateHUD();
