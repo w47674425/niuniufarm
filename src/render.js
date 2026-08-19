@@ -78,8 +78,6 @@ export function render(game) {
       el.style.left = x + "px"; el.style.top = y + "px";
       el.style.zIndex = (pi * 20 + ci);
       el.setAttribute("data-id", c.id);
-      // 手绘贴纸感：基于卡 id 生成稳定小角度旋转（±3°），拖拽缩放通过 CSS 变量组合
-      el.style.setProperty("--rot", (((c.id * 37) % 7) - 3) + "deg");
       let html = '<div class="ce">' + meta.emoji + '</div><div class="cn">' + meta.label + '</div>';
       if (meta.cat === "mon" || (meta.atk && (c.type === "herder" || c.type === "dog"))) {
         const hpc = c.hp != null ? c.hp : meta.hp;

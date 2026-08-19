@@ -89,34 +89,61 @@ export function showCodex(game) {
 
 // 合成图鉴：按类别分组展示所有配方（输入 → 输出）
 const RECIPE_GROUPS = [
+  { key: "produce", label: "🌾 采集/生产" },
   { key: "eat", label: "🍽 食用" },
   { key: "potion", label: "🧪 药水" },
-  { key: "equip", label: "🛡️ 装备" },
-  { key: "build", label: "🏗️ 建造" },
   { key: "craft", label: "🛠️ 制作" },
-  { key: "smelt", label: "⚙️ 冶炼" },
+  { key: "equip", label: "🛡️ 装备" },
   { key: "cook", label: "🍳 烹饪" },
+  { key: "build", label: "🏗️ 建造" },
+  { key: "smelt", label: "⚙️ 冶炼" },
   { key: "slaughter", label: "🔪 宰杀" },
   { key: "breed", label: "👶 繁殖" },
-  { key: "train", label: "🐕 训练" },
-  { key: "produce", label: "🌾 采集/生产" }
+  { key: "train", label: "🐕 训练" }
 ];
-function fmtCards(cards, n) {
+// 产出物 → 产出它的配方 id（用于「点击跳转到合成配方」）
+// 同一产出物可能有多个来源（如生肉=猪/牛），取第一个；跳转目标始终存在
+const OUT_MAKER = {};
+RECIPES.forEach(r => {
+  r.out.forEach(o => { if (!OUT_MAKER[o.type]) OUT_MAKER[o.type] = r.id; });
+});
+
+function fmtCards(cards) {
   const parts = [];
-  Object.keys(cards).forEach(k => { parts.push(META[k].emoji + " " + META[k].label + "×" + cards[k]); });
+  Object.keys(cards).forEach(k => {
+    const maker = OUT_MAKER[k]; // 该输入卡是否可由其他配方合成
+    if (maker) {
+      // 可合成的输入 → 链接，点击滚动到对应配方并高亮
+      parts.push('<a class="ri-link" data-maker="' + maker + '">' + META[k].emoji + " " + META[k].label + "×" + cards[k] + '</a>');
+    } else {
+      parts.push(META[k].emoji + " " + META[k].label + "×" + cards[k]);
+    }
+  });
   return parts.join(" + ");
 }
 function fmtOut(out) {
   return out.map(o => META[o.type].emoji + " " + META[o.type].label + "×" + o.n).join(" + ") || "无";
 }
+// 配方难度评分（升序=易→难）：
+//   前置建筑 +20 ｜ 输入卡种类数 ×5 ｜ 冗余材料(超出种类的张数) ×2 ｜ 耗时 sec/10（上限 +3）
+// 输入含牧民视为基础操作不增加难度；产出价值不影响难度
+function recipeDifficulty(r) {
+  const kinds = Object.keys(r.in).length;
+  const total = Object.values(r.in).reduce((a, b) => a + b, 0);
+  let d = (r.need ? 20 : 0) + (kinds - 1) * 5 + Math.max(0, total - kinds) * 2 + Math.min(r.sec / 10, 3);
+  // 繁殖/训练需要建筑在场（房屋/兵营），按前置建筑对待
+  if (r.kind === "breed" || r.kind === "train") d += 20;
+  return d;
+}
 export function showRecipes(game) {
-  let html = '<h2>⚗️ 合成图鉴</h2><p>把输入卡拖到牧民上合成；采集/生产/制作产物会掉落在旁边。</p>';
+  let html = '<h2>⚗️ 合成图鉴</h2><p>把输入卡拖到牧民上合成；采集/生产/制作产物会掉落在旁边。<br><span style="font-size:12px;color:#7a715c;">已按难易排序：越靠前越容易。绿色下划线材料可点击跳到它的配方。</span></p>';
   RECIPE_GROUPS.forEach(g => {
-    const list = RECIPES.filter(r => r.kind === g.key);
+    const list = RECIPES.filter(r => r.kind === g.key)
+      .sort((a, b) => recipeDifficulty(a) - recipeDifficulty(b));
     if (list.length === 0) return;
     html += '<h3>' + g.label + '</h3><div class="recipe-list">';
     list.forEach(r => {
-      html += '<div class="recipe-item"><div class="ri-in">' + fmtCards(r.in, 1) + '</div>' +
+      html += '<div class="recipe-item" id="ri-' + r.id + '"><div class="ri-in">' + fmtCards(r.in) + '</div>' +
         '<div class="ri-arrow">→</div><div class="ri-out">' + fmtOut(r.out) + '</div>' +
         '<div class="ri-sec">' + r.sec + 's</div></div>';
     });
@@ -124,6 +151,19 @@ export function showRecipes(game) {
   });
   html += '<button class="close" id="recipeClose">关闭</button>';
   const ov = openModal(game, html);
+  // 跳转：点击可合成材料 → 滚动到产出它的配方行并高亮闪烁
+  ov.querySelectorAll(".ri-link").forEach(a => {
+    a.onclick = function (e) {
+      e.preventDefault(); e.stopPropagation();
+      const maker = a.getAttribute("data-maker");
+      const row = ov.querySelector("#ri-" + maker);
+      if (!row) return;
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+      row.classList.remove("flash");
+      void row.offsetWidth; // 重触发动画
+      row.classList.add("flash");
+    };
+  });
   document.getElementById("recipeClose").onclick = function () { closeModal(game, ov); };
   return ov;
 }

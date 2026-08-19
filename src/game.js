@@ -34,6 +34,9 @@ export class Game {
       if (this.state.gameOver) return;
       this.state.paused = !this.state.paused;
       this.refs.pauseBtn.textContent = this.state.paused ? "▶" : "⏸";
+      // 暂停提示角标（pointer-events:none，不阻挡任何操作）
+      const badge = this.refs.pauseBadge;
+      if (badge) badge.classList.toggle("show", this.state.paused);
     };
     this.refs.packBtn.onclick = () => { if (!this.state.gameOver) toggleModal(this, "shop", () => showShop(this)); };
     this.refs.taskBtn.onclick = () => { if (!this.state.gameOver) toggleModal(this, "tasks", () => showTasks(this)); };

@@ -58,9 +58,7 @@ body{
   border-radius:10px 13px 9px 12px / 12px 9px 13px 10px;
   border:2px solid var(--ink-line-soft);
   box-shadow:2px 2px 0 rgba(91,83,64,.28);
-  transform:rotate(-.6deg);
 }
-.stat:nth-child(even){ transform:rotate(.5deg); }
 #app.night .stat{ background:#26335a; color:#eaf0ff; border-color:#5a6c9e; box-shadow:2px 2px 0 rgba(0,0,0,.4);}
 #dayStat{font-size:14px;}
 #phaseTag{font-size:12px;padding:3px 8px 5px;font-weight:800;}
@@ -73,9 +71,9 @@ body{
   background:var(--card-bg); color:var(--ink);
   border:2px solid var(--ink-line-soft); border-radius:11px 9px 12px 10px / 10px 12px 9px 11px;
   padding:3px 9px 5px; font-size:13px; font-weight:800;
-  box-shadow:2px 2px 0 rgba(91,83,64,.28); transform:rotate(.6deg);}
+  box-shadow:2px 2px 0 rgba(91,83,64,.28);}
 #app.night .iconbtn{background:#26335a;color:#eaf0ff;border-color:#5a6c9e;box-shadow:2px 2px 0 rgba(0,0,0,.4);}
-.iconbtn:active{transform:rotate(.6deg) scale(.93) translate(1px,1px); box-shadow:0 0 0 rgba(0,0,0,0);}
+.iconbtn:active{transform:scale(.93) translate(1px,1px); box-shadow:0 0 0 rgba(0,0,0,0);}
 
 /* —— 棋盘：纸张桌面 —— */
 #board{ position:relative; flex:1 1 auto; margin:8px; overflow:hidden; touch-action:none;
@@ -104,10 +102,9 @@ body{
   box-shadow:3px 3px 0 rgba(91,83,64,.35);
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   cursor:grab; user-select:none; text-align:center; padding:3px;
-  transform:rotate(var(--rot,0deg));
   transition:box-shadow .1s;
 }
-.card.dragging{cursor:grabbing; box-shadow:5px 6px 0 rgba(91,83,64,.4); z-index:900!important; transform:rotate(var(--rot,0deg)) scale(1.06);}
+.card.dragging{cursor:grabbing; box-shadow:5px 6px 0 rgba(91,83,64,.4); z-index:900!important; transform:scale(1.06);}
 .card .ce{font-size:30px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.15));}
 .card .cn{font-size:11px;font-weight:800;margin-top:3px;line-height:1.1;
   letter-spacing:.5px; text-shadow:0 1px 0 rgba(255,255,255,.8);}
@@ -137,12 +134,10 @@ body{
   border-radius:12px 9px 13px 10px / 10px 13px 9px 12px;
   padding:4px 1px 6px; text-align:center; cursor:pointer;
   font-family:var(--font-hand); font-weight:800; font-size:11px;
-  box-shadow:2px 2px 0 rgba(91,83,64,.3);
-  transform:rotate(-.4deg);}
-.navbtn:nth-child(odd){ transform:rotate(.5deg); }
+  box-shadow:2px 2px 0 rgba(91,83,64,.3);}
 #app.night .navbtn{background:#26335a;color:#eaf0ff;border-color:#5a6c9e;box-shadow:2px 2px 0 rgba(0,0,0,.4);}
 .navbtn .ne{font-size:18px;display:block;line-height:1.1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.12));}
-.navbtn:active{transform:rotate(0) scale(.92) translate(1px,1px); box-shadow:0 0 0 rgba(0,0,0,0);}
+.navbtn:active{transform:scale(.92) translate(1px,1px); box-shadow:0 0 0 rgba(0,0,0,0);}
 .navbtn .badge{position:absolute;}
 
 /* —— 新手卡包：手绘礼物盒 —— */
@@ -153,14 +148,13 @@ body{
   border-radius:16px 13px 18px 14px / 14px 18px 13px 16px;
   box-shadow:4px 4px 0 rgba(120,90,0,.28);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  cursor:pointer;user-select:none;text-align:center;z-index:6;
-  transform:rotate(-1deg);}
+  cursor:pointer;user-select:none;text-align:center;z-index:6;}
 .packobj .pe{font-size:34px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.15));}
 .packobj .pn{font-size:12px;font-weight:800;margin-top:5px;color:#7a5300;}
-.packobj:active{transform:rotate(0) scale(.94) translate(1px,1px);box-shadow:0 0 0 rgba(0,0,0,0);}
+.packobj:active{transform:scale(.94) translate(1px,1px);box-shadow:0 0 0 rgba(0,0,0,0);}
 
 /* —— 市场：手绘招牌 —— */
-#market{ position:absolute; left:50%; bottom:10px; transform:translateX(-50%) rotate(-.5deg);
+#market{ position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
   background:rgba(255,250,230,.95); color:#7a5300;
   border:2.5px solid #d9a400; border-radius:16px 13px 18px 14px / 14px 18px 13px 16px;
   padding:7px 15px 9px; font-weight:800; font-size:13px; pointer-events:none;
@@ -259,3 +253,24 @@ body{
 .recipe-item .ri-arrow{color:var(--green-4);font-weight:800;flex:0 0 auto;}
 .recipe-item .ri-out{flex:1;font-weight:700;line-height:1.35;}
 .recipe-item .ri-sec{flex:0 0 auto;color:#a0977c;font-size:10.5px;font-weight:700;font-family:var(--font-num);}
+
+/* —— 暂停提示角标：醒目但不阻挡操作 —— */
+#pauseBadge{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);
+  font-size:30px;font-weight:800;color:#fff;letter-spacing:2px;
+  background:rgba(60,50,30,.82);border:3px solid #fff;
+  border-radius:18px 14px 20px 15px / 15px 20px 14px 18px;
+  padding:12px 26px 16px;z-index:1400;pointer-events:none;
+  box-shadow:6px 6px 0 rgba(0,0,0,.35),0 0 40px rgba(255,255,255,.15) inset;
+  opacity:0;visibility:hidden;transition:opacity .25s, visibility .25s;
+  animation:none;}
+#pauseBadge.show{opacity:1;visibility:visible;animation:pausePulse 1.4s ease-in-out infinite;}
+@keyframes pausePulse{0%,100%{transform:translate(-50%,-50%) scale(1);}
+  50%{transform:translate(-50%,-50%) scale(1.06);}}
+
+/* 合成图鉴：可合成材料链接 + 跳转高亮 */
+.ri-link{color:var(--green-4);text-decoration:underline dotted;text-underline-offset:2px;
+  cursor:pointer;font-weight:800;}
+.ri-link:active{color:#2e7a24;}
+.recipe-item.flash{animation:riFlash .9s ease 2;}
+@keyframes riFlash{0%,100%{background:rgba(255,255,255,.55);}
+  50%{background:#d9f2c8;box-shadow:0 0 0 2px var(--green-3);}}

@@ -14,6 +14,7 @@ const refs = {
   popStat: document.getElementById('popStat'),
   foodStat: document.getElementById('foodStat'),
   pauseBtn: document.getElementById('pauseBtn'),
+  pauseBadge: document.getElementById('pauseBadge'),
   packBtn: document.getElementById('packBtn'),
   taskBtn: document.getElementById('taskBtn'),
   codexBtn: document.getElementById('codexBtn'),
