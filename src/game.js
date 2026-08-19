@@ -6,7 +6,7 @@ import { bindDrag } from './drag.js';
 import { tick, loadGame, saveGame, checkTasks } from './systems.js';
 import { showShop, showTasks, showCodex, showHelp, showSettings } from './modals.js';
 import { bindToast } from './merge.js';
-import { TICK_MS } from './config.js';
+import { TICK_MS, SAVE_KEY } from './config.js';
 
 export class Game {
   constructor(refs) {
@@ -84,5 +84,20 @@ export class Game {
       this.toast("🎁 新手卡包已打开！拖牧民到资源上开始生产");
     };
     this.toast("👆 点击中间的新手卡包开始游戏");
+  }
+
+  // 重置存档并原地重开（不刷新页面，避免 beforeunload 把旧存档写回）
+  resetGame() {
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) { }
+    // 清空棋盘 DOM（卡片/进度条/弹窗/卡包）
+    this.board.querySelectorAll(".card, .pileprog, .packobj, .overlay").forEach(el => el.remove());
+    this.app.classList.remove("night");
+    // 重建状态并重新开局
+    this.state = createState();
+    this._tickCount = 0;
+    this.newGame();
+    this.updateHUD();
+    this.render();
+    this.toast("🔄 已重置存档，开始新游戏");
   }
 }

@@ -1,6 +1,6 @@
 // 弹窗层：卡包商店 / 任务 / 图鉴 / 帮助 / 设置 / 游戏结束（对齐资料库准绳版「弹窗」区块）
 
-import { META, PACKS, TASKS, SAVE_KEY } from './config.js';
+import { META, PACKS, TASKS } from './config.js';
 import { rand } from './utils.js';
 import { mk, makePile } from './state.js';
 import { render, updateHUD, toast } from './render.js';
@@ -100,7 +100,7 @@ export function showSettings(game) {
     '<button class="btn alt" id="resetBtn">🗑 重置存档</button>' +
     '<button class="close" id="closeSet">关闭</button>' +
     '</div>');
-  document.getElementById("resetBtn").onclick = function () { localStorage.removeItem(SAVE_KEY); location.reload(); };
+  document.getElementById("resetBtn").onclick = function () { game.resetGame(); };
   document.getElementById("closeSet").onclick = function () { closeModal(ov); };
 }
 
@@ -130,5 +130,5 @@ export function endGame(game) {
       render(game); updateHUD(game);
     }, 1600);
   };
-  document.getElementById("restartBtn").onclick = function () { localStorage.removeItem(SAVE_KEY); location.reload(); };
+  document.getElementById("restartBtn").onclick = function () { game.resetGame(); };
 }
