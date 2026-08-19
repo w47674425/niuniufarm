@@ -49,7 +49,7 @@ export function bindTaskCheck(fn) { checkTasksSafe = fn; }
 // 手绘风单位形象：牧民（草帽小人）/牧羊犬（手绘狗）用内联 SVG，其余用 emoji
 function artFor(c, meta) {
   if (c.type === "herder") {
-    return '<svg viewBox="0 0 64 64" width="52" height="52" class="art">' +
+    return '<svg viewBox="0 0 64 64" width="34" height="34" class="art">' +
       '<circle cx="32" cy="26" r="14" fill="#ffd9b3" stroke="#5b5340" stroke-width="2.5"/>' +
       '<path d="M20 18 Q32 4 44 18 L44 24 Q32 10 20 24 Z" fill="#e8b04b" stroke="#5b5340" stroke-width="2.5"/>' +
       '<circle cx="26" cy="24" r="2" fill="#3d4a30"/><circle cx="38" cy="24" r="2" fill="#3d4a30"/>' +
@@ -59,7 +59,7 @@ function artFor(c, meta) {
       '</svg>';
   }
   if (c.type === "dog") {
-    return '<svg viewBox="0 0 64 64" width="52" height="52" class="art">' +
+    return '<svg viewBox="0 0 64 64" width="34" height="34" class="art">' +
       '<path d="M18 40 Q10 22 22 14 Q26 22 30 20 Q30 8 42 12 Q46 20 40 26 Q46 32 44 40 Z" fill="#e8d5b0" stroke="#5b5340" stroke-width="2.5"/>' +
       '<circle cx="34" cy="24" r="2" fill="#3d4a30"/><circle cx="42" cy="20" r="1.6" fill="#3d4a30"/>' +
       '<path d="M14 40 Q8 54 12 60 L18 58 Q16 48 20 42 Z" fill="#e8d5b0" stroke="#5b5340" stroke-width="2"/>' +
@@ -102,8 +102,17 @@ export function render(game) {
       el.style.left = x + "px"; el.style.top = y + "px";
       el.style.zIndex = (pi * 20 + ci);
       el.setAttribute("data-id", c.id);
-      let html = '<div class="ce">' + artFor(c, meta) + '</div><div class="cn">' + meta.label + '</div>';
-      if (meta.cat === "mon" || (meta.atk && (c.type === "herder" || c.type === "dog"))) {
+      let html = '';
+      // 牧民/牧羊犬：血量以卡片背景色块呈现（血多绿、中黄、低红）
+      if (c.type === "herder" || c.type === "dog") {
+        const hpc = c.hp != null ? c.hp : meta.hp;
+        const max = (meta.hp || 0) + (c.hpBonus || 0);
+        const pct = clamp(Math.round(hpc / max * 100), 0, 100);
+        const color = pct > 60 ? "rgba(110,190,80,.5)" : (pct > 30 ? "rgba(240,190,60,.55)" : "rgba(225,90,70,.6)");
+        html += '<div class="hpbg" style="height:' + pct + '%;background:' + color + '"></div>';
+      }
+      html += '<div class="ce">' + artFor(c, meta) + '</div><div class="cn">' + meta.label + '</div>';
+      if (meta.cat === "mon") {
         const hpc = c.hp != null ? c.hp : meta.hp;
         const max = meta.hp;
         const pct = clamp(Math.round(hpc / max * 100), 0, 100);

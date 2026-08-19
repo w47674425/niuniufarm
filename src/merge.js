@@ -53,8 +53,11 @@ export function matchRecipe(game, p) {
     const r = RECIPES[i];
     if (r.need && countType(game, r.need) === 0) continue;   // 前置建筑不在场
     if (r.cooldown && p.cd > 0) continue;                    // 冷却中
-    // 牛每日限量：挤奶每天最多 2 次（跨天重置见 onDayEnd）
-    if (r.id === "milk_cow" && (game.state.milkToday || 0) >= 2) continue;
+    // 牛每日限量：每头牛每天最多挤 2 次（配额跟牛走，非全局；跨天重置见 onDayEnd）
+    if (r.id === "milk_cow") {
+      const quotaCow = p.cards.some(c => META[c.type] && META[c.type].cowKind && (c.milkToday || 0) < 2);
+      if (!quotaCow) continue;
+    }
     // 伐木场/采石场每日限量 3 次
     if (r.id === "prod_lumberyard" && (game.state.lumberToday || 0) >= 3) continue;
     if (r.id === "prod_quarry" && (game.state.quarryToday || 0) >= 3) continue;
@@ -119,8 +122,11 @@ function applyRecipe(game, p, r) {
       }
     });
   }
-  // 挤奶计数：每日限量 2 瓶
-  if (r.id === "milk_cow") game.state.milkToday = (game.state.milkToday || 0) + 1;
+  // 挤奶计数：配额跟牛走（每头牛每天最多 2 次）
+  if (r.id === "milk_cow") {
+    const cow = p.cards.find(c => META[c.type] && META[c.type].cowKind && (c.milkToday || 0) < 2);
+    if (cow) cow.milkToday = (cow.milkToday || 0) + 1;
+  }
   // 伐木场/采石场每日限量 3 次
   if (r.id === "prod_lumberyard") game.state.lumberToday = (game.state.lumberToday || 0) + 1;
   if (r.id === "prod_quarry") game.state.quarryToday = (game.state.quarryToday || 0) + 1;
@@ -140,11 +146,17 @@ function applyRecipe(game, p, r) {
   if (r.kind === "breed") { p.cd = r.cooldown; }
   // 即时效果
   if (r.kind === "eat" || r.kind === "potion") {
-    // 药水多次使用：charges 递减，用完消失（每次 +5 血）
+    // 药水一次一次消耗：每次使用扣 1 次；用完即消失；
+    // 若还有剩余则从堆中弹出掉落到旁边（需玩家重新拖放才用第二次，避免自动连用）
     const potion = r.kind === "potion" ? p.cards.find(c => c.type === "potion") : null;
     if (potion) {
       potion.charges = (potion.charges != null ? potion.charges : META.potion.charges) - 1;
-      if (potion.charges <= 0) p.cards = p.cards.filter(c => c !== potion);
+      p.cards = p.cards.filter(c => c !== potion);
+      if (potion.charges > 0) {
+        const target = spawnNear(game, p, [potion]);
+        if (!game.state._drops) game.state._drops = [];
+        game.state._drops.push({ from: p, to: target });
+      }
     }
     const h = p.cards.find(c => c.type === "herder");
     if (h) {

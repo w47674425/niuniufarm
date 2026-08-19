@@ -95,15 +95,24 @@ export function onNightStart(game) { toast(game, "🌙 夜幕降临，当心怪�
 export function onDayStart(game) { toast(game, "☀️ 天亮了，怪物撤退"); clearMonsters(game); }
 
 // ===================== 怪物 =====================
+// 刷新表（夜晚编号 = day）：0=thief 1=bandit
+// 1-2晚:1小 3-5晚:2小 6-8晚:3小 9-10晚:5小 11-12晚:1大1小 13-14晚:1大2小 15-16晚:1大3小 17-18晚:2大 19-20晚:3大
+const MONSTER_TABLE = [
+  [0], [0], [0, 0], [0, 0], [0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0],
+  [1, 0], [1, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0, 0], [1, 0, 0, 0], [1, 1], [1, 1], [1, 1, 1], [1, 1, 1]
+];
+// 表中 0=thief 1=bandit
 export function spawnMonsters(game) {
   const st = game.state;
   const herders = popCount(game);
   if (herders <= 0) return;
   const walls = countType(game, "wall");
-  const n = (st.day <= 1) ? 0 : clamp(1 + Math.floor((st.day - 2) / 2) - walls, 0, 4);
+  const table = MONSTER_TABLE[st.day - 1] || MONSTER_TABLE[MONSTER_TABLE.length - 1];
+  // 城墙：每座减少 1 个怪物（最少 0）
+  const total = Math.max(0, table.length - walls);
+  const types = table.slice(0, total).map(v => v === 1 ? "bandit" : "thief");
   const s = game.boardSize();
-  for (let i = 0; i < n; i++) {
-    const type = (Math.random() < 0.9) ? "thief" : "bandit";
+  types.forEach(type => {
     const edge = Math.floor(Math.random() * 4);
     let x, y;
     if (edge === 0) { x = rand(20, s.w - 92); y = 10; }
@@ -113,8 +122,8 @@ export function spawnMonsters(game) {
     const m = mk(game, type);
     markSeen(game, type);
     makePile(game, x, y, [m]);
-  }
-  if (n > 0) audio.play("combat.monster");
+  });
+  if (types.length > 0) audio.play("combat.monster");
 }
 
 export function clearMonsters(game) {
@@ -167,9 +176,15 @@ export function moveMonsters(game) {
 // ===================== 每日结算 =====================
 export function onDayEnd(game) {
   const st = game.state;
-  st.milkToday = 0;     // 牛每日挤奶限量重置
+  st.milkToday = 0;     // 兼容旧字段（牛配额已改为跟卡走）
   st.lumberToday = 0;   // 伐木场每日限量重置
   st.quarryToday = 0;   // 采石场每日限量重置
+  // 每头牛今日挤奶配额重置（配额跟牛卡走）
+  st.piles.forEach(p => {
+    p.cards.forEach(c => {
+      if (META[c.type] && META[c.type].cowKind && c.milkToday) c.milkToday = 0;
+    });
+  });
   // 所有单位（牧民/牧羊犬）每天消耗 1 餐饱食；
   // 饱食不足的单位自动进食：优先吃自己 diet 偏好的食物，没有则吃场上任意食物，都没有才饿死
   const units = allCards(game).filter(c => META[c.type] && META[c.type].cat === "unit");

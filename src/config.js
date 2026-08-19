@@ -20,7 +20,7 @@ export const SAVE_KEY = "niuniu_ranch_save_v1";
 // foodCap: 该单位饱食度上限（不同单位可不同，不再用全局 FOOD_CAP）
 export const META = {
   // —— 单位 ——
-  herder:{cat:"unit", emoji:"🧑‍🌾", label:"牧民", atk:1, hp:5, sale:0, diet:"blueberry", foodCap:10},
+  herder:{cat:"unit", emoji:"🧑‍🌾", label:"牧民", atk:1, hp:5, sale:0, diet:"blueberry", foodCap:5},
   dog:   {cat:"unit", emoji:"🐕", label:"牧羊犬", atk:4, hp:15, sale:0, diet:"rawmeat", foodCap:8},
 // —— 资源点（牧民叠上去按配方产出，每次采集消耗 1 次，归零即消失）——
 // charges: 采集次数（2026-08-19 经济修复 P0：限制无限产出通胀；树/岩/莓 5 次、矿 8 次 [PLACEHOLDER·待 playtest]）
@@ -47,8 +47,6 @@ farm:     {cat:"node", emoji:"🌾", label:"麦田", note:"牧民→小麦×2（
   ironsword: {cat:"item", emoji:"⚔️", label:"铁剑", sale:12},
   woodshield:{cat:"item", emoji:"🛡️", label:"木盾", sale:5},
   ironshield:{cat:"item", emoji:"🪖", label:"铁盾", sale:12},
-  axe:       {cat:"item", emoji:"🪓", label:"斧头", sale:5},
-  pickaxe:   {cat:"item", emoji:"⛏️", label:"镐子", sale:5},
   potion:    {cat:"item", emoji:"🧪", label:"治疗药水", sale:6, charges:2},
   // —— 食物 ——
   blueberry:  {cat:"food", emoji:"🫐", label:"蓝莓", food:1, sale:1},
@@ -156,8 +154,6 @@ export const RECIPES = [
   {id:"craft_iron_sword", name:"制作铁剑", in:{herder:1, ironingot:1, branch:1}, out:[{type:"ironsword",n:1}], sec:10, consume:true, kind:"craft", need:"smelter", label:"⚔️ 制作中"},
   {id:"craft_wooden_shield", name:"制作木盾", in:{herder:1, wood:3}, out:[{type:"woodshield",n:1}], sec:6, consume:true, kind:"craft", label:"🛡️ 制作中"},
   {id:"craft_iron_shield", name:"制作铁盾", in:{herder:1, ironingot:2, wood:1}, out:[{type:"ironshield",n:1}], sec:12, consume:true, kind:"craft", need:"smelter", label:"🪖 制作中"},
-  {id:"craft_axe", name:"制作斧头", in:{herder:1, wood:1, stone:1}, out:[{type:"axe",n:1}], sec:6, consume:true, kind:"craft", label:"🪓 制作中"},
-  {id:"craft_pickaxe", name:"制作镐子", in:{herder:1, wood:1, stone:2}, out:[{type:"pickaxe",n:1}], sec:6, consume:true, kind:"craft", label:"⛏️ 制作中"},
   {id:"craft_potion", name:"制作治疗药水", in:{herder:1, herb:3}, out:[{type:"potion",n:1}], sec:8, consume:true, kind:"craft", label:"🧪 制作中"},
   // —— 冶炼（需冶炼厂）——
   {id:"smelt_iron", name:"冶炼铁锭", in:{herder:1, ironore:2}, out:[{type:"ironingot",n:1}], sec:10, consume:true, kind:"smelt", need:"smelter", label:"⚙️ 冶炼中"},

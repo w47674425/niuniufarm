@@ -20,7 +20,7 @@
   --font-num:"Patrick Hand","ZCOOL KuaiLe",sans-serif;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{margin:0;height:100%;}
+html,body{margin:0;height:100%;height:100dvh;}
 body{
   font-family:var(--font-hand);
   color:var(--ink); display:flex; justify-content:center; align-items:stretch;
@@ -331,3 +331,30 @@ body{
 
 /* 加速按钮激活态 */
 #speedBtn.active{background:#ffe9a8;border-color:#d9a400;color:#7a5300;}
+
+/* 手绘单位 SVG：与 emoji 等大小，不挤压文字 */
+.card .ce .art{display:block;width:34px;height:34px;margin:0 auto;
+  filter:drop-shadow(1px 2px 0 rgba(0,0,0,.15));}
+
+/* 牧民/牧羊犬血量背景层（血多绿→中黄→低红，从卡片底部向上填充） */
+.card .hpbg{position:absolute;left:0;right:0;bottom:0;z-index:0;
+  border-radius:0 0 13px 10px / 0 0 15px 10px;
+  transition:height .3s ease, background .3s ease;}
+.card > .ce,.card > .cn,.card > .cb,.card > .hpbar{position:relative;z-index:1;}
+
+/* ===== 手机浏览器适配 ===== */
+html,body{height:100dvh;}  /* 移动端地址栏动态高度 */
+#app{height:100dvh;}
+#topbar{padding-top:calc(8px + env(safe-area-inset-top,0px));}
+#bottombar{padding-bottom:calc(6px + env(safe-area-inset-bottom,0px));}
+body{-webkit-text-size-adjust:100%;text-size-adjust:100%;overscroll-behavior:none;}
+#board{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none;}
+.iconbtn,.navbtn{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+/* 窄屏（≤360px）紧凑布局 */
+@media (max-width:360px){
+  #topbar{gap:3px;padding:6px 6px 8px;}
+  .stat{font-size:11.5px;padding:2px 6px 4px;}
+  .iconbtn{width:34px;height:34px;}
+}
+/* 顶部栏超宽时换行 */
+#topbar{flex-wrap:wrap;}
