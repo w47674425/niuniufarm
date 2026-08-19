@@ -128,7 +128,9 @@ function fmtCards(cards) {
   return parts.join(" + ");
 }
 function fmtOut(out) {
-  return out.map(o => META[o.type].emoji + " " + META[o.type].label + "×" + o.n).join(" + ") || "无";
+  if (!out || out.length === 0) return ""; // 无产出（食用/装备等）不显示
+  // 多个产出物每个占一行；不显示数量
+  return out.map(o => META[o.type].emoji + " " + META[o.type].label).join('<br>');
 }
 // 配方难度评分（升序=易→难）：
 //   前置建筑 +20 ｜ 输入卡种类数 ×5 ｜ 冗余材料(超出种类的张数) ×2 ｜ 耗时 sec/10（上限 +3）
@@ -149,8 +151,10 @@ export function showRecipes(game) {
     if (list.length === 0) return;
     html += '<h3>' + g.label + '</h3><div class="recipe-list">';
     list.forEach(r => {
-      html += '<div class="recipe-item" id="ri-' + r.id + '"><div class="ri-out">' + fmtOut(r.out) + '</div>' +
-        '<div class="ri-arrow">←</div><div class="ri-in">' + fmtCards(r.in) + '</div>' +
+      const outHtml = fmtOut(r.out);
+      html += '<div class="recipe-item" id="ri-' + r.id + '">' +
+        (outHtml ? '<div class="ri-out">' + outHtml + '</div><div class="ri-arrow">←</div>' : '') +
+        '<div class="ri-in">' + fmtCards(r.in) + '</div>' +
         '<div class="ri-sec">' + r.sec + 's</div></div>';
     });
     html += '</div>';

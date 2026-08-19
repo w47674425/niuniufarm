@@ -12,6 +12,9 @@ export function createState() {
     timeLeft: DAY_LEN,
     phase: "day",         // "day" | "night"
     paused: false,
+    packOpened: false,    // 新手卡包是否已打开（未打开时倒计时冻结）
+    speed: 1,             // 游戏速度倍率：1/2/4
+    milkToday: 0,         // 今日已挤奶次数（牛每日限量）
     gameOver: false,
     gold: 0,
     drag: null,

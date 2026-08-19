@@ -13,19 +13,21 @@ import * as audio from './audio.js';
 export function tick(game) {
   const st = game.state;
   if (st.paused || st.gameOver) return;
+  if (!st.packOpened) return; // 新手卡包未打开：倒计时冻结，游戏未真正开始
+  const dt = (TICK_MS / 1000) * (st.speed || 1); // 速度倍率：1x/2x/4x
   // 昼夜推进
-  st.timeLeft -= TICK_MS / 1000;
+  st.timeLeft -= dt;
   if (st.timeLeft <= 0) { onDayEnd(game); return; }
   updatePhase(game);
   // 生产 / 建造 / 繁殖 / 战斗
   st.piles.forEach(p => {
     if (p.isPack) return;
-    if (p.cd > 0) p.cd = Math.max(0, p.cd - TICK_MS / 1000); // 繁殖冷却递减
+    if (p.cd > 0) p.cd = Math.max(0, p.cd - dt); // 繁殖冷却递减
     const info = _pileAction(game, p);
     if (!info) { p.prog = 0; p.action = null; return; }
     if (p.action !== info.type) { p.action = info.type; p.prog = 0; }
     p.actionSec = info.sec;
-    p.prog += TICK_MS / 1000;
+    p.prog += dt;
     if (p.prog >= info.sec) {
       p.prog = 0;
       _doAction(game, p, info);
@@ -155,8 +157,9 @@ export function moveMonsters(game) {
       return;
     }
     const ux = dx / dist, uy = dy / dist;
-    p.x = clamp(p.x + ux * MON_SPEED, 4, bs.w - CARD_W - 4);
-    p.y = clamp(p.y + uy * MON_SPEED, 4, bs.h - CARD_H - 4);
+    const spd = MON_SPEED * (st.speed || 1); // 加速时怪物同步提速
+    p.x = clamp(p.x + ux * spd, 4, bs.w - CARD_W - 4);
+    p.y = clamp(p.y + uy * spd, 4, bs.h - CARD_H - 4);
   });
   render(game); updateHUD(game);
 }
@@ -164,6 +167,7 @@ export function moveMonsters(game) {
 // ===================== 每日结算 =====================
 export function onDayEnd(game) {
   const st = game.state;
+  st.milkToday = 0; // 牛每日挤奶限量重置
   // 所有单位（牧民/牧羊犬）每天消耗 1 餐饱食；
   // 饱食不足的单位自动进食：优先吃自己 diet 偏好的食物，没有则吃场上任意食物，都没有才饿死
   const units = allCards(game).filter(c => META[c.type] && META[c.type].cat === "unit");
@@ -352,6 +356,8 @@ export function loadGame(game) {
       const p = makePile(game, sp.x, sp.y, cards);
       p.isPack = sp.isPack;
     });
+    // 新手卡包状态：存档含未开的 pack → 倒计时冻结；否则已开
+    st.packOpened = !st.piles.some(p => p.isPack);
     // 离线收益（仅在有房屋且离线较久时）
     const elapsed = Math.max(0, (Date.now() - (data.lastSave || Date.now())) / 1000);
     if (elapsed > 60 && countType(game, "house") > 0) {

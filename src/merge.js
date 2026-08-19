@@ -53,6 +53,8 @@ export function matchRecipe(game, p) {
     const r = RECIPES[i];
     if (r.need && countType(game, r.need) === 0) continue;   // 前置建筑不在场
     if (r.cooldown && p.cd > 0) continue;                    // 冷却中
+    // 牛每日限量：挤奶每天最多 2 次（跨天重置见 onDayEnd）
+    if (r.id === "milk_cow" && (game.state.milkToday || 0) >= 2) continue;
     let ok = true;
     for (const k in r.in) { if ((cnt[k] || 0) < r.in[k]) { ok = false; break; } }
     if (!ok) continue;
@@ -108,6 +110,8 @@ function applyRecipe(game, p, r) {
       }
     });
   }
+  // 挤奶计数：每日限量 2 瓶
+  if (r.id === "milk_cow") game.state.milkToday = (game.state.milkToday || 0) + 1;
   // 资源点采集次数：每次采集 -1，归零即消耗消失（仅采集类配方：输入含 node 卡）
   const rInputsNode = Object.keys(r.in).some(k => META[k] && META[k].cat === "node" && META[k].charges);
   if (r.kind === "produce" && rInputsNode) {
@@ -128,6 +132,13 @@ function applyRecipe(game, p, r) {
     if (h) {
       if (r.foodGain) { h.fed = Math.min(foodCapOf(h.type), (h.fed || 0) + r.foodGain); toast(game, "🍽 " + r.name + "：饱食 " + h.fed); }
       if (r.hpGain) { if (h.hp == null) h.hp = META.herder.hp; h.hp += r.hpGain; toast(game, "❤️ " + r.name + "：血量+" + r.hpGain); }
+    }
+    // 药水治狗（use_potion_dog 配方：狗+药水）
+    const dog = p.cards.find(c => c.type === "dog");
+    if (r.hpGain && dog) {
+      if (dog.hp == null) dog.hp = META.dog.hp;
+      dog.hp += r.hpGain;
+      toast(game, "🐕 牧羊犬使用" + r.name + "：血量+" + r.hpGain);
     }
   }
   if (r.kind === "equip") {

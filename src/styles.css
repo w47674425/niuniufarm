@@ -311,3 +311,6 @@ body{
   font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;
   box-shadow:1px 1px 0 rgba(0,0,0,.2);font-family:var(--font-num);}
 .codex-cell.locked .cc-count{background:#999;}
+
+/* 加速按钮激活态 */
+#speedBtn.active{background:#ffe9a8;border-color:#d9a400;color:#7a5300;}

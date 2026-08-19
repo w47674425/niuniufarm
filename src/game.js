@@ -31,16 +31,40 @@ export class Game {
     bindDrag(this);
 
     // 底部导航
+    this.refs.speedBtn.onclick = () => {
+      if (this.state.gameOver || this.state.paused) return;
+      // 循环 1x → 2x → 4x → 1x
+      this.state.speed = this.state.speed === 1 ? 2 : (this.state.speed === 2 ? 4 : 1);
+      this.refs.speedBtn.textContent = this.state.speed === 1 ? "▶▶" : ("▶▶×" + this.state.speed);
+      this.refs.speedBtn.classList.toggle("active", this.state.speed > 1);
+      audio.play("ui.click");
+    };
+    // 暂停状态同步（pauseBtn/空格/后台切换共用）
+    const syncPause = () => {
+      this.refs.pauseBtn.textContent = this.state.paused ? "▶" : "⏸";
+      const badge = this.refs.pauseBadge;
+      if (badge) badge.classList.toggle("show", this.state.paused);
+      audio.setPaused(this.state.paused);
+    };
     this.refs.pauseBtn.onclick = () => {
       if (this.state.gameOver) return;
       this.state.paused = !this.state.paused;
-      this.refs.pauseBtn.textContent = this.state.paused ? "▶" : "⏸";
-      // 暂停提示角标（pointer-events:none，不阻挡任何操作）
-      const badge = this.refs.pauseBadge;
-      if (badge) badge.classList.toggle("show", this.state.paused);
+      syncPause();
       audio.play("badge");
-      audio.setPaused(this.state.paused);
     };
+    // 切到后台/切出标签页：自动暂停（回到前台不自动继续，防时间流逝）
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden && !this.state.paused && !this.state.gameOver) {
+        this.state.paused = true;
+        syncPause();
+      }
+    });
+    window.addEventListener("blur", () => {
+      if (!this.state.paused && !this.state.gameOver) {
+        this.state.paused = true;
+        syncPause();
+      }
+    });
     this.refs.packBtn.onclick = () => { if (!this.state.gameOver) { audio.play("ui.click"); toggleModal(this, "shop", () => showShop(this)); } };
     this.refs.taskBtn.onclick = () => { if (!this.state.gameOver) { audio.play("ui.click"); toggleModal(this, "tasks", () => showTasks(this)); } };
     this.refs.codexBtn.onclick = () => { audio.play("ui.click"); toggleModal(this, "codex", () => showCodex(this)); };
@@ -88,6 +112,7 @@ export class Game {
     pack._open = () => {
       if (pack._done) return;
       pack._done = true;
+      this.state.packOpened = true; // 卡包打开，倒计时启动
       const oldEl = this.board.querySelector(".packobj");
       if (oldEl) oldEl.remove();
       removePile(this, pack);

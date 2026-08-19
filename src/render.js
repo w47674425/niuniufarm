@@ -2,7 +2,7 @@
 
 import { CARD_W, CARD_H, STACK_OFF, META, DAY_LEN, DAY_FRAC, foodCapOf } from './config.js';
 import { clamp } from './utils.js';
-import { allCards, countType, popCap, popCount } from './state.js';
+import { allCards, countType, popCount } from './state.js';
 import { pileAction } from './merge.js';
 
 export function fmtTime(s) {
@@ -24,10 +24,6 @@ export function updateHUD(game) {
   const warn = (st.phase === "day" && st.timeLeft <= nightAt + 10);
   game.refs.timer.classList.toggle("night-warn", warn);
   game.refs.goldStat.textContent = "💰 ¥" + st.gold;
-  game.refs.popStat.textContent = "🧑 " + popCount(game) + "/" + popCap(game);
-  let herderFood = 0;
-  allCards(game).forEach(c => { if (META[c.type] && META[c.type].cat === "unit") herderFood += (c.fed || 0); });
-  game.refs.foodStat.textContent = "🍖 " + herderFood;
   // 刷新统计（任务依赖）
   st.stats.herders = popCount(game);
   st.stats.houses = countType(game, "house");

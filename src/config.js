@@ -24,12 +24,13 @@ export const META = {
   dog:   {cat:"unit", emoji:"🐕", label:"牧羊犬", atk:4, hp:15, sale:0, diet:"rawmeat", foodCap:8},
 // —— 资源点（牧民叠上去按配方产出，每次采集消耗 1 次，归零即消失）——
 // charges: 采集次数（2026-08-19 经济修复 P0：限制无限产出通胀；树/岩/莓 5 次、矿 8 次 [PLACEHOLDER·待 playtest]）
-tree:     {cat:"node", emoji:"🌳", label:"树木", note:"牧民→木头×2 树枝×1", sale:0, charges:5},
-rock:     {cat:"node", emoji:"⛰️", label:"岩石", note:"牧民→石头×2", sale:0, charges:5},
-bush:     {cat:"node", emoji:"🌿", label:"蓝莓丛", note:"牧民→蓝莓×2", sale:0, charges:5},
-iron:     {cat:"node", emoji:"🗻", label:"铁矿脉", note:"牧民→铁矿石×2", sale:0, charges:4},
-gold:     {cat:"node", emoji:"💎", label:"金矿脉", note:"牧民→金矿石×1", sale:0, charges:4},
-herbfield:{cat:"node", emoji:"🌱", label:"药田", note:"牧民→药草", sale:0, charges:5},
+tree:     {cat:"node", emoji:"🌳", label:"树木", note:"牧民→木头×2 树枝×1", sale:0, charges:1},
+rock:     {cat:"node", emoji:"⛰️", label:"岩石", note:"牧民→石头×2", sale:0, charges:1},
+bush:     {cat:"node", emoji:"🌿", label:"蓝莓丛", note:"牧民→蓝莓×2", sale:0, charges:1},
+iron:     {cat:"node", emoji:"🗻", label:"铁矿脉", note:"牧民→铁矿石×2", sale:0, charges:1},
+gold:     {cat:"node", emoji:"💎", label:"金矿脉", note:"牧民→金矿石×1", sale:0, charges:1},
+herbfield:{cat:"node", emoji:"🌱", label:"药田", note:"牧民→药草", sale:0, charges:1},
+farm:     {cat:"node", emoji:"🌾", label:"麦田", note:"牧民→小麦×2（一次性）", sale:0, charges:1},
   // —— 资源 / 材料 ——
   wood:     {cat:"res", emoji:"🪵", label:"木头", sale:2},
   branch:   {cat:"res", emoji:"🍃", label:"树枝", sale:1},
@@ -59,7 +60,6 @@ herbfield:{cat:"node", emoji:"🌱", label:"药田", note:"牧民→药草", sal
   rawmeat:  {cat:"food", emoji:"🥩", label:"生肉", food:1, sale:3},
   // —— 建筑 ——
   house:     {cat:"build", emoji:"🏠", label:"房屋", note:"人口+繁殖", sale:0},
-  farm:      {cat:"build", emoji:"🌾", label:"麦田", note:"牧民→小麦×2", sale:0},
   lumberyard:{cat:"build", emoji:"🪓", label:"伐木场", note:"牧民→木头×3", sale:0},
   quarry:    {cat:"build", emoji:"⚒️", label:"采石场", note:"牧民→石头×3", sale:0},
   smelter:   {cat:"build", emoji:"🔥", label:"冶炼厂", note:"冶炼铁/金锭", sale:0},
@@ -130,13 +130,13 @@ export const RECIPES = [
   {id:"eat_cookedmeat", name:"食用烤肉", in:{herder:1, cookedmeat:1}, out:[], sec:1, consume:true, kind:"eat", foodGain:4, hpGain:2, label:"🍖 进食中"},
   {id:"eat_fruitplatter", name:"食用果蔬拼盘", in:{herder:1, fruitplatter:1}, out:[], sec:1, consume:true, kind:"eat", foodGain:3, label:"🥗 进食中"},
   {id:"use_potion", name:"使用药水", in:{herder:1, potion:1}, out:[], sec:1, consume:true, kind:"potion", hpGain:10, label:"🧪 治疗中"},
+  {id:"use_potion_dog", name:"给狗用药", in:{dog:1, potion:1}, out:[], sec:1, consume:true, kind:"potion", hpGain:10, label:"🧪 治疗中"},
   {id:"equip_sword", name:"狗装备木剑", in:{dog:1, sword:1}, out:[], sec:1, consume:true, kind:"equip", atk:1, label:"🗡️ 装备中"},
   {id:"equip_ironsword", name:"狗装备铁剑", in:{dog:1, ironsword:1}, out:[], sec:1, consume:true, kind:"equip", atk:3, label:"⚔️ 装备中"},
   {id:"equip_shield", name:"狗装备木盾", in:{dog:1, woodshield:1}, out:[], sec:1, consume:true, kind:"equip", hp:3, label:"🛡️ 装备中"},
   {id:"equip_ironshield", name:"狗装备铁盾", in:{dog:1, ironshield:1}, out:[], sec:1, consume:true, kind:"equip", hp:6, label:"🪖 装备中"},
   // —— 建造（动作类，优先于手工：凑齐建材即建成建筑，而非误做手工）——
   {id:"build_house", name:"建造房屋", in:{herder:1, wood:2, stone:1}, out:[{type:"house",n:1}], sec:15, consume:true, kind:"build", label:"🏠 建造中"},
-  {id:"build_farm", name:"建造农场", in:{herder:1, wood:3, stone:1}, out:[{type:"farm",n:1}], sec:20, consume:true, kind:"build", label:"🏡 建造中"},
   {id:"build_lumberyard", name:"建造伐木场", in:{herder:1, wood:4, stone:1}, out:[{type:"lumberyard",n:1}], sec:20, consume:true, kind:"build", label:"🪓 建造中"},
   {id:"build_quarry", name:"建造采石场", in:{herder:1, wood:2, stone:3}, out:[{type:"quarry",n:1}], sec:20, consume:true, kind:"build", label:"⚒️ 建造中"},
   {id:"build_smelter", name:"建造冶炼厂", in:{herder:1, wood:2, stone:4}, out:[{type:"smelter",n:1}], sec:25, consume:true, kind:"build", label:"🔥 建造中"},
@@ -152,14 +152,14 @@ export const RECIPES = [
   {id:"craft_axe", name:"制作斧头", in:{herder:1, wood:1, stone:1}, out:[{type:"axe",n:1}], sec:6, consume:true, kind:"craft", label:"🪓 制作中"},
   {id:"craft_pickaxe", name:"制作镐子", in:{herder:1, wood:1, stone:2}, out:[{type:"pickaxe",n:1}], sec:6, consume:true, kind:"craft", label:"⛏️ 制作中"},
   {id:"craft_torch", name:"制作火把", in:{herder:1, branch:1}, out:[{type:"torch",n:1}], sec:3, consume:true, kind:"craft", label:"🔥 制作中"},
-  {id:"craft_potion", name:"制作治疗药水", in:{herder:1, herb:2, blueberry:1}, out:[{type:"potion",n:1}], sec:8, consume:true, kind:"craft", label:"🧪 制作中"},
+  {id:"craft_potion", name:"制作治疗药水", in:{herder:1, herb:3}, out:[{type:"potion",n:1}], sec:8, consume:true, kind:"craft", label:"🧪 制作中"},
   // —— 冶炼（需冶炼厂）——
   {id:"smelt_iron", name:"冶炼铁锭", in:{herder:1, ironore:2}, out:[{type:"ironingot",n:1}], sec:10, consume:true, kind:"smelt", need:"smelter", label:"⚙️ 冶炼中"},
   {id:"smelt_gold", name:"冶炼金锭", in:{herder:1, goldore:2}, out:[{type:"goldingot",n:1}], sec:15, consume:true, kind:"smelt", need:"smelter", label:"🪙 冶炼中"},
   // —— 烹饪（需厨房）——
   {id:"mill_flour", name:"磨面粉", in:{herder:1, wheat:2}, out:[{type:"flour",n:1}], sec:5, consume:true, kind:"cook", label:"🌾 磨粉中"},
-  {id:"cook_bread", name:"烤面包", in:{herder:1, flour:1}, out:[{type:"bread",n:1}], sec:8, consume:true, kind:"cook", need:"kitchen", label:"🍞 烘焙中"},
-  {id:"cook_meat", name:"烤肉", in:{herder:1, rawmeat:1}, out:[{type:"cookedmeat",n:1}], sec:6, consume:true, kind:"cook", need:"kitchen", label:"🍖 烤肉中"},
+  {id:"cook_bread", name:"烤面包", in:{herder:1, milk:1, flour:1}, out:[{type:"bread",n:1}], sec:8, consume:true, kind:"cook", need:"kitchen", label:"🍞 烘焙中"},
+  {id:"cook_meat", name:"烤肉", in:{herder:1, torch:1, rawmeat:1}, out:[{type:"cookedmeat",n:1}], sec:6, consume:true, kind:"cook", need:"kitchen", label:"🍖 烤肉中"},
   {id:"cook_platter", name:"果蔬拼盘", in:{herder:1, blueberry:3, herb:1}, out:[{type:"fruitplatter",n:1}], sec:10, consume:true, kind:"cook", need:"kitchen", label:"🥗 拼盘中"},
   // —— 宰杀 / 繁殖 / 训练 / 畜牧 ——
   {id:"slaughter_pig", name:"宰杀猪", in:{herder:1, pig:1}, out:[{type:"rawmeat",n:3}], sec:3, consume:true, kind:"slaughter", label:"🔪 宰杀中"},
@@ -169,14 +169,14 @@ export const RECIPES = [
   // —— 建筑生产（被动，建筑已建好后的自动产出）——
   {id:"prod_lumberyard", name:"伐木", in:{herder:1, lumberyard:1}, out:[{type:"wood",n:3}], sec:6, consume:false, kind:"produce", label:"🪓 生产中"},
   {id:"prod_quarry", name:"采石", in:{herder:1, quarry:1}, out:[{type:"stone",n:3}], sec:6, consume:false, kind:"produce", label:"⚒️ 生产中"},
-  {id:"prod_farm", name:"种植", in:{herder:1, farm:1}, out:[{type:"wheat",n:2}], sec:4, consume:false, kind:"produce", label:"🌾 种植中"},
-  // —— 采集（资源点，节点不消耗，被动生产，最后匹配）——
+  // —— 采集（资源点，每次采集消耗 charges，归零即消失；麦田一次性）——
   {id:"gather_wood", name:"伐木", in:{herder:1, tree:1}, out:[{type:"wood",n:2},{type:"branch",n:1}], sec:8, consume:false, kind:"produce", label:"🌳 砍伐中"},
   {id:"gather_stone", name:"采石", in:{herder:1, rock:1}, out:[{type:"stone",n:2}], sec:8, consume:false, kind:"produce", label:"⛰️ 采石中"},
   {id:"gather_blueberry", name:"采蓝莓", in:{herder:1, bush:1}, out:[{type:"blueberry",n:2}], sec:5, consume:false, kind:"produce", label:"🌿 采摘中"},
   {id:"gather_iron", name:"采铁矿", in:{herder:1, iron:1}, out:[{type:"ironore",n:2}], sec:12, consume:false, kind:"produce", label:"🗻 开采中"},
   {id:"gather_gold", name:"采金矿", in:{herder:1, gold:1}, out:[{type:"goldore",n:1}], sec:15, consume:false, kind:"produce", label:"💎 开采中"},
-  {id:"gather_herb", name:"采药草", in:{herder:1, herbfield:1}, out:[{type:"herb",n:1}], sec:4, consume:false, kind:"produce", label:"🌱 采集中"}
+  {id:"gather_herb", name:"采药草", in:{herder:1, herbfield:1}, out:[{type:"herb",n:1}], sec:4, consume:false, kind:"produce", label:"🌱 采集中"},
+  {id:"gather_farm", name:"收割小麦", in:{herder:1, farm:1}, out:[{type:"wheat",n:2}], sec:4, consume:false, kind:"produce", label:"🌾 收割中"}
 ];
 
 // 取单位饱食度上限：META 中 foodCap 缺失时回退到 1（兜底）
