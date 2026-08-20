@@ -2,14 +2,16 @@
 // 音频引擎：Web Audio API 原生实现（设计文档：design/游戏音频系统设计.md）
 // 架构：单 AudioContext + 三总线(SFX/Music/UI) + Master
 // 抓放音参数化：weight/hardness/organic 驱动单一合成器，零资产区分 46 卡
-// 自适应音乐：昼夜分层（base / night / tension），程序化音序器先行
+// 背景音乐：循环播放 public/audio/background.mp3（接入 Music 总线，继承音乐音量/开关）
 // ============================================================
 
 let ctx = null;
 let master = null, busSFX = null, busMusic = null, busUI = null;
 let noiseBuf = null;          // 全局共享噪声 buffer
-let musicTimer = null;        // 音序器句柄
-let mPhase = "day";           // 当前音乐昼夜状态
+let bgm = null;               // 背景音乐 <audio> 元素
+let bgmSrc = null;            // MediaElementAudioSourceNode（接入 Music 总线）
+const BGM_URL = (import.meta.env.BASE_URL || "/") + "audio/background.mp3";
+let mPhase = "day";           // 当前音乐昼夜状态（mp3 模式下仅作状态记录）
 let mThreat = 0;              // 威胁等级 0~1
 let muted = false;
 
@@ -41,6 +43,13 @@ export function init() {
     busSFX = ctx.createGain(); busSFX.gain.value = 0.9; busSFX.connect(master);
     busMusic = ctx.createGain(); busMusic.gain.value = 0.5; busMusic.connect(master);
     busUI = ctx.createGain(); busUI.gain.value = 0.7; busUI.connect(master);
+    // 背景音乐：循环 mp3，接入 Music 总线（音量/开关统一由总线控制）
+    bgm = new Audio();
+    bgm.src = BGM_URL;
+    bgm.loop = true;
+    bgm.preload = "auto";
+    bgm.volume = 1;
+    try { bgmSrc = ctx.createMediaElementSource(bgm); bgmSrc.connect(busMusic); } catch (e) { bgmSrc = null; }
     // 全局噪声 buffer（打击类共享）
     const len = ctx.sampleRate * 1;
     noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
@@ -48,7 +57,7 @@ export function init() {
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     if (ctx.state === "suspended") ctx.resume();
     applyVol();              // 应用持久化的音量设置
-    startMusicSequencer();
+    startMusic();
     return true;
   } catch (e) { return false; }
 }
@@ -76,8 +85,8 @@ function applyVol() {
   master.gain.value = volState.master;
   busSFX.gain.value = volState.sfxOn ? 0.9 : 0;
   busMusic.gain.value = volState.musicOn ? 0.5 : 0;
-  if (volState.musicOn && !musicTimer && !muted) startMusicSequencer();
-  if (!volState.musicOn && musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+  if (volState.musicOn && !muted) startMusic();
+  else stopMusic();
 }
 
 // 主音量 0~1
@@ -102,13 +111,15 @@ export function getAudioSettings() { return { ...volState }; }
 export function setMuted(m) {
   muted = m;
   if (master) master.gain.value = m ? 0 : volState.master;
+  if (m) stopMusic();
+  else if (volState.musicOn) startMusic();
 }
 
 // 暂停时：停音乐（SFX 不排队）
 export function setPaused(p) {
   if (!ctx) return;
-  if (p) { if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } }
-  else if (!musicTimer && volState.musicOn) startMusicSequencer();
+  if (p) stopMusic();
+  else if (volState.musicOn) startMusic();
 }
 
 // ===================== 合成原语 =====================
@@ -283,33 +294,17 @@ export function play(name, opts) {
   } catch (e) { /* 音频异常静默 */ }
 }
 
-// ===================== 自适应音乐（程序化音序器） =====================
-// base：五声音阶木琴拨弦（全天，高八度轻快）｜night：低音 drone + 稀疏铃音 ｜ tension：威胁 pulse
-const PENTA = [392.00, 440.00, 493.88, 587.33, 659.25, 783.99, 880.00, 987.77]; // G A B D E G A B（轻快区）
-
-function startMusicSequencer() {
-  if (!ctx || musicTimer) return;
-  musicTimer = setInterval(() => {
-    if (!ctx) return;
-    const t = ctx.currentTime;
-    // base 层：每个 tick 有概率弹一个五声音符（木琴感，轻快）
-    if (Math.random() < 0.6) {
-      const f = PENTA[Math.floor(Math.random() * PENTA.length)];
-      note(busMusic, f, t, 0.28, 0.12, "triangle");
-    }
-    // night 层：低音 drone + 稀疏铃音（提亮）
-    if (mPhase === "night") {
-      if (Math.random() < 0.2) note(busMusic, 147, t, 1.0, 0.09, "sine");      // D3 drone
-      if (Math.random() < 0.14) note(busMusic, PENTA[7] * 2, t, 0.4, 0.07, "sine"); // 高铃
-    }
-    // tension 层：威胁脉冲（夜间有怪）
-    if (mPhase === "night" && mThreat > 0.3) {
-      note(busMusic, 880, t, 0.05, 0.05 * mThreat, "square");
-    }
-  }, 620);
+// ===================== 背景音乐（循环 mp3） =====================
+// 受音乐开关 / 静音 / 暂停控制，音量由 Music 总线增益统一调节
+function startMusic() {
+  if (!bgm || !volState.musicOn || muted) return;
+  bgm.play().catch(() => {});   // 自动播放被拦截时静默忽略
+}
+function stopMusic() {
+  if (bgm) bgm.pause();
 }
 
-// 由游戏循环驱动：昼夜 + 威胁
+// 由游戏循环驱动：昼夜 + 威胁（mp3 模式下仅记录状态，不改变曲目）
 export function setMusicState(phase, threat) {
   if (phase !== mPhase || Math.abs(threat - mThreat) > 0.05) {
     mPhase = phase;

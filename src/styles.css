@@ -345,16 +345,16 @@ body{-webkit-text-size-adjust:100%;text-size-adjust:100%;overscroll-behavior:non
 /* 卡片正式图：160x160 缩放至卡片内（正式资产自带插画，不加投影） */
 .card .ce .cimg{display:block;width:50px;height:50px;object-fit:contain;margin:0 auto;}
 /* 背景图模式（覆盖原水彩渐变） */
-#app.bgimg{background:var(--green-1);}
+#app.bgimg{position:relative;isolation:isolate;background:var(--green-1);}
 /* 背景图层：图片由 JS 内联样式设置，路径相对文档根，构建后不会因 dist/assets 错位而 404 */
-#app.bgimg > #bg-layer{position:absolute;inset:0;z-index:-1;
+#app.bgimg > #bg-layer{position:absolute;inset:0;z-index:0;
   background-position:center;background-size:cover;background-repeat:no-repeat;pointer-events:none;}
 /* UI 导航图标 */
 .navbtn .ne{display:inline-flex;width:22px;height:22px;margin-right:2px;vertical-align:-4px;}
 .navbtn .ne img{width:22px;height:22px;object-fit:contain;}
 .iconbtn img{width:20px;height:20px;object-fit:contain;vertical-align:-3px;}
 /* 背景层修正：铺在 app 内、内容之下 */
-#app.bgimg > *{position:relative;z-index:1;}
+#app.bgimg > *:not(#bg-layer){position:relative;z-index:1;}
 
 /* 弹窗卡图 */
 .cc-emoji .cc-img{width:44px;height:44px;object-fit:contain;vertical-align:middle;}
