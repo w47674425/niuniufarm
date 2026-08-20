@@ -4,6 +4,7 @@ import { CARD_W, CARD_H, STACK_OFF, META, DAY_LEN, DAY_FRAC, foodCapOf } from '.
 import { clamp } from './utils.js';
 import { allCards, countType, popCount } from './state.js';
 import { pileAction } from './merge.js';
+import { cardArt } from './art.js';
 
 export function fmtTime(s) {
   s = Math.max(0, Math.ceil(s));
@@ -18,6 +19,25 @@ export function updateHUD(game) {
   const ph = game.refs.phaseTag;
   if (st.phase === "day") { ph.textContent = "☀️ 白天"; ph.className = "stat"; ph.classList.add("day"); }
   else { ph.textContent = "🌙 夜晚"; ph.className = "stat"; ph.classList.add("night"); }
+  // 正式背景图：用内联样式图层，避免构建后 CSS 相对路径(resolve 到 dist/assets)导致 404
+  const app = game.app;
+  if (app) {
+    app.classList.add("bgimg");
+    let bg = app.querySelector("#bg-layer");
+    if (!bg) {
+      bg = document.createElement("div");
+      bg.id = "bg-layer";
+      app.prepend(bg);
+      const base = import.meta.env.BASE_URL || "./";
+      const setBg = () => {
+        const key = app.classList.contains("night") ? "night" : "day";
+        bg.style.backgroundImage = `url("${base}img/bg_${key}.png")`;
+      };
+      setBg();
+      // 跟随 .night 类切换昼/夜背景
+      new MutationObserver(setBg).observe(app, { attributes: true, attributeFilter: ["class"] });
+    }
+  }
   game.refs.timer.textContent = fmtTime(st.timeLeft);
   // 夜晚来临前 10 秒：timer 放大警示（仅白天段生效，入夜后恢复）
   const nightAt = DAY_LEN * (1 - DAY_FRAC); // 夜晚开始剩余秒数
@@ -46,26 +66,12 @@ let checkTasksSafe = () => {};
 export function bindTaskCheck(fn) { checkTasksSafe = fn; }
 
 // ===================== 渲染棋盘 =====================
-// 手绘风单位形象：牧民（草帽小人）/牧羊犬（手绘狗）用内联 SVG，其余用 emoji
+// 正式资产：有图的卡用 <img>（160x160 缩放至卡片内 ~52px），无图（怪物）退回 emoji
 function artFor(c, meta) {
-  if (c.type === "herder") {
-    return '<svg viewBox="0 0 64 64" width="34" height="34" class="art">' +
-      '<circle cx="32" cy="26" r="14" fill="#ffd9b3" stroke="#5b5340" stroke-width="2.5"/>' +
-      '<path d="M20 18 Q32 4 44 18 L44 24 Q32 10 20 24 Z" fill="#e8b04b" stroke="#5b5340" stroke-width="2.5"/>' +
-      '<circle cx="26" cy="24" r="2" fill="#3d4a30"/><circle cx="38" cy="24" r="2" fill="#3d4a30"/>' +
-      '<path d="M29 31 Q32 35 35 31" stroke="#5b5340" stroke-width="2" fill="none" stroke-linecap="round"/>' +
-      '<path d="M20 60 Q32 46 44 60 L56 58 Q48 40 44 34 Q32 42 20 34 Q16 40 8 58 Z" fill="#f5b942" stroke="#5b5340" stroke-width="2.5"/>' +
-      '<path d="M18 50 Q32 42 46 50" stroke="#5b5340" stroke-width="2" fill="none"/>' +
-      '</svg>';
-  }
-  if (c.type === "dog") {
-    return '<svg viewBox="0 0 64 64" width="34" height="34" class="art">' +
-      '<path d="M18 40 Q10 22 22 14 Q26 22 30 20 Q30 8 42 12 Q46 20 40 26 Q46 32 44 40 Z" fill="#e8d5b0" stroke="#5b5340" stroke-width="2.5"/>' +
-      '<circle cx="34" cy="24" r="2" fill="#3d4a30"/><circle cx="42" cy="20" r="1.6" fill="#3d4a30"/>' +
-      '<path d="M14 40 Q8 54 12 60 L18 58 Q16 48 20 42 Z" fill="#e8d5b0" stroke="#5b5340" stroke-width="2"/>' +
-      '<path d="M44 42 Q50 54 46 60 L40 58 Q42 48 40 42 Z" fill="#e8d5b0" stroke="#5b5340" stroke-width="2"/>' +
-      '<path d="M22 50 Q32 44 40 50" stroke="#5b5340" stroke-width="2" fill="none"/>' +
-      '</svg>';
+  const src = cardArt(c.type);
+  if (src) {
+    // 牛品种：统一牛图 + 稀有度星标在名称行（cow-r 类）
+    return '<img class="cimg" src="' + src + '" alt="' + meta.label + '" draggable="false" />';
   }
   return meta.emoji;
 }
@@ -152,7 +158,7 @@ export function renderPack(game, pack) {
   el.className = "packobj";
   el.style.left = pack.x + "px";
   el.style.top = pack.y + "px";
-  el.innerHTML = '<div class="pe">🎁</div><div class="pn">新手卡包</div>';
+  el.innerHTML = '<div class="pe"><img src="img/ui_pack.png" alt="新手卡包" /></div><div class="pn">新手卡包</div>';
   // 打开逻辑统一由 onDown 处理（已在其中识别 .packobj）；这里保留 onclick 作为兜底
   el.onclick = function () { if (pack._open) pack._open(); };
   board.appendChild(el);

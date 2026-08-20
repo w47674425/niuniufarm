@@ -3,4 +3,6 @@ dist/
 *.local
 .DS_Store
 .workbuddy/
+resource/
 vite.config.js.timestamp-*.mjs
+resource/

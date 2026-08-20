@@ -42,15 +42,15 @@ body{
     radial-gradient(circle at 20% 20%, rgba(120,160,255,.10) 0 12%, transparent 20%),
     radial-gradient(circle at 80% 75%, rgba(120,160,255,.08) 0 14%, transparent 22%),
     linear-gradient(180deg,var(--night-1),var(--night-2) 55%,var(--night-3)); }
-/* —— 顶部栏：纸签 + 手绘下划线 —— */
+/* —— 顶部栏：渐变遮罩 + 下边框（贴合资产背景） —— */
 #topbar{
   flex:0 0 auto; display:flex; align-items:center; gap:5px;
   padding:8px 8px 10px; flex-wrap:wrap;
-  background:rgba(255,255,255,.35);
-  border-bottom:2px solid var(--ink-line-soft);
-  box-shadow:0 3px 0 rgba(255,255,255,.35) inset;
+  background:linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0));
+  border-bottom:2px solid rgba(255,255,255,.6);
 }
-#app.night #topbar{ background:rgba(20,30,55,.45); border-bottom-color:rgba(160,190,255,.35); }
+#app.night #topbar{ background:linear-gradient(180deg, rgba(10,18,40,.6), rgba(10,18,40,0));
+  border-bottom-color:rgba(160,190,255,.35); }
 .stat{display:flex;align-items:center;gap:3px;font-weight:700;font-size:13px;
   background:var(--card-bg); color:var(--ink);
   padding:3px 8px 5px; white-space:nowrap; position:relative;
@@ -75,39 +75,13 @@ body{
 #app.night .iconbtn{background:#26335a;color:#eaf0ff;border-color:#5a6c9e;box-shadow:2px 2px 0 rgba(0,0,0,.4);}
 .iconbtn:active{transform:scale(.93) translate(1px,1px); box-shadow:0 0 0 rgba(0,0,0,0);}
 
-/* —— 棋盘：纸张桌面 —— */
+/* —— 棋盘：透明层，直接透出资产背景图 —— */
 #board{ position:relative; flex:1 1 auto; margin:8px; overflow:hidden; touch-action:none;
   border-radius:20px 17px 22px 18px / 18px 22px 17px 20px;
-  border:3px solid rgba(255,255,255,.65);
-  background:
-    /* 手绘草叶：斜向短笔画纹理 */
-    repeating-linear-gradient(100deg, rgba(90,160,60,.16) 0 2px, transparent 2px 6px),
-    repeating-linear-gradient(80deg, rgba(90,160,60,.10) 0 1px, transparent 1px 4px),
-    radial-gradient(circle at 15% 85%, rgba(160,220,120,.30) 0 13%, transparent 15%),
-    radial-gradient(circle at 82% 70%, rgba(160,220,120,.26) 0 11%, transparent 13%),
-    linear-gradient(180deg, rgba(200,235,160,.55), rgba(150,210,110,.45));
-  box-shadow:inset 0 0 40px rgba(90,130,60,.18), 0 4px 0 rgba(0,0,0,.15);
+  border:none;
+  background:transparent;
 }
-/* 手绘栅栏：四周围栏（木条 + 横梁），白色手绘风 */
-#board::before{ content:""; position:absolute; inset:0; pointer-events:none; z-index:2;
-  background:
-    /* 上/下横梁 */
-    repeating-linear-gradient(90deg, rgba(255,255,255,.75) 0 34px, transparent 34px 46px);
-  -webkit-mask: linear-gradient(0deg, #000 0 5px, transparent 5px 15px, #000 15px 20px, transparent 20px 95%, #000 95% 100%);
-          mask: linear-gradient(0deg, #000 0 5px, transparent 5px 15px, #000 15px 20px, transparent 20px 95%, #000 95% 100%);
-  border:2.5px solid rgba(150,110,60,.55);
-  border-radius:inherit;
-  opacity:.75;
-}
-#app.night #board{ border-color:rgba(170,200,255,.4);
-  background:
-    repeating-linear-gradient(100deg, rgba(80,110,200,.14) 0 2px, transparent 2px 6px),
-    radial-gradient(circle at 15% 85%, rgba(120,150,230,.16) 0 13%, transparent 15%),
-    radial-gradient(circle at 82% 70%, rgba(120,150,230,.12) 0 11%, transparent 13%),
-    linear-gradient(180deg, rgba(35,50,95,.55), rgba(25,40,80,.5));
-}
-#app.night #board::before{ border-color:rgba(160,180,230,.5); opacity:.4; }
-#app.night #board{ box-shadow:inset 0 0 40px rgba(10,18,40,.5), 0 4px 0 rgba(0,0,0,.3);}
+#app.night #board{ background:transparent; }
 
 /* —— 卡牌：手绘贴纸 —— */
 .card{ position:absolute; width:72px; height:90px;
@@ -142,10 +116,12 @@ body{
 .card.cat-item{background-image:linear-gradient(180deg,var(--cat-tech),#f9f0ff),var(--paper-noise);border-color:#9670c9;}
 .card.cat-mon{background-image:linear-gradient(180deg,var(--cat-mon),#fff0f0),var(--paper-noise);border-color:#cf5252;}
 
-/* —— 底部导航：手绘按钮排 —— */
+/* —— 底部导航：渐变遮罩 + 上边框（贴合资产背景） —— */
 #bottombar{ flex:0 0 auto; display:flex; gap:5px; padding:7px 8px 11px;
-  background:rgba(255,255,255,.3); border-top:2px solid var(--ink-line-soft);}
-#app.night #bottombar{ background:rgba(20,30,55,.45); border-top-color:rgba(160,190,255,.35); }
+  background:linear-gradient(0deg, rgba(255,255,255,.55), rgba(255,255,255,0));
+  border-top:2px solid rgba(255,255,255,.6);}
+#app.night #bottombar{ background:linear-gradient(0deg, rgba(10,18,40,.6), rgba(10,18,40,0));
+  border-top-color:rgba(160,190,255,.35); }
 .navbtn{ flex:1; background:var(--card-bg); color:var(--ink);
   border:2px solid var(--ink-line-soft);
   border-radius:12px 9px 13px 10px / 10px 13px 9px 12px;
@@ -333,8 +309,7 @@ body{
 #speedBtn.active{background:#ffe9a8;border-color:#d9a400;color:#7a5300;}
 
 /* 手绘单位 SVG：与 emoji 等大小，不挤压文字 */
-.card .ce .art{display:block;width:34px;height:34px;margin:0 auto;
-  filter:drop-shadow(1px 2px 0 rgba(0,0,0,.15));}
+.card .ce .art{display:block;width:34px;height:34px;margin:0 auto;}
 
 /* 牧民/牧羊犬血量背景层（血多绿→中黄→低红，从卡片底部向上填充） */
 .card .hpbg{position:absolute;left:0;right:0;bottom:0;z-index:0;
@@ -358,3 +333,34 @@ body{-webkit-text-size-adjust:100%;text-size-adjust:100%;overscroll-behavior:non
 }
 /* 顶部栏超宽时换行 */
 #topbar{flex-wrap:wrap;}
+
+/* 产物材料链接（蓝：该产物会被其他配方使用，点击跳到使用它的配方） */
+.ri-out-link{color:#3b6fd4;text-decoration:underline dotted;text-underline-offset:2px;cursor:pointer;font-weight:800;}
+.ri-out-link:active{color:#2a4fa0;}
+/* 前置建筑需求徽标 */
+.ri-need{flex:0 0 auto;align-self:center;font-size:9px;font-weight:800;color:#8a5a00;
+  background:#ffe9b0;border:1.5px solid #d9a400;border-radius:8px;padding:1px 6px;white-space:nowrap;}
+
+/* ===== 正式资产 ===== */
+/* 卡片正式图：160x160 缩放至卡片内（正式资产自带插画，不加投影） */
+.card .ce .cimg{display:block;width:50px;height:50px;object-fit:contain;margin:0 auto;}
+/* 背景图模式（覆盖原水彩渐变） */
+#app.bgimg{background:var(--green-1);}
+/* 背景图层：图片由 JS 内联样式设置，路径相对文档根，构建后不会因 dist/assets 错位而 404 */
+#app.bgimg > #bg-layer{position:absolute;inset:0;z-index:-1;
+  background-position:center;background-size:cover;background-repeat:no-repeat;pointer-events:none;}
+/* UI 导航图标 */
+.navbtn .ne{display:inline-flex;width:22px;height:22px;margin-right:2px;vertical-align:-4px;}
+.navbtn .ne img{width:22px;height:22px;object-fit:contain;}
+.iconbtn img{width:20px;height:20px;object-fit:contain;vertical-align:-3px;}
+/* 背景层修正：铺在 app 内、内容之下 */
+#app.bgimg > *{position:relative;z-index:1;}
+
+/* 弹窗卡图 */
+.cc-emoji .cc-img{width:44px;height:44px;object-fit:contain;vertical-align:middle;}
+.ri-link .ri-img,.ri-in .ri-img,.ri-out .ri-img{width:16px;height:16px;object-fit:contain;vertical-align:-3px;}
+/* 市场右下角图标 */
+#market .m-emoji img{width:64px;height:64px;object-fit:contain;}
+
+/* 新手卡包正式图标：64px 区域保持（与 emoji 同尺寸） */
+.packobj .pe img{width:64px;height:64px;object-fit:contain;display:block;margin:0 auto;}

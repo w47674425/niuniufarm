@@ -47,6 +47,8 @@ farm:     {cat:"node", emoji:"🌾", label:"麦田", note:"牧民→小麦×2（
   ironsword: {cat:"item", emoji:"⚔️", label:"铁剑", sale:12},
   woodshield:{cat:"item", emoji:"🛡️", label:"木盾", sale:5},
   ironshield:{cat:"item", emoji:"🪖", label:"铁盾", sale:12},
+  axe:       {cat:"item", emoji:"🪓", label:"斧头", sale:5},
+  pickaxe:   {cat:"item", emoji:"⛏️", label:"镐子", sale:5},
   potion:    {cat:"item", emoji:"🧪", label:"治疗药水", sale:6, charges:2},
   // —— 食物 ——
   blueberry:  {cat:"food", emoji:"🫐", label:"蓝莓", food:1, sale:1},
@@ -154,12 +156,14 @@ export const RECIPES = [
   {id:"craft_iron_sword", name:"制作铁剑", in:{herder:1, ironingot:1, branch:1}, out:[{type:"ironsword",n:1}], sec:10, consume:true, kind:"craft", need:"smelter", label:"⚔️ 制作中"},
   {id:"craft_wooden_shield", name:"制作木盾", in:{herder:1, wood:3}, out:[{type:"woodshield",n:1}], sec:6, consume:true, kind:"craft", label:"🛡️ 制作中"},
   {id:"craft_iron_shield", name:"制作铁盾", in:{herder:1, ironingot:2, wood:1}, out:[{type:"ironshield",n:1}], sec:12, consume:true, kind:"craft", need:"smelter", label:"🪖 制作中"},
+  {id:"craft_axe", name:"制作斧头", in:{herder:1, wood:1, stone:1}, out:[{type:"axe",n:1}], sec:6, consume:true, kind:"craft", label:"🪓 制作中"},
+  {id:"craft_pickaxe", name:"制作镐子", in:{herder:1, wood:1, stone:2}, out:[{type:"pickaxe",n:1}], sec:6, consume:true, kind:"craft", label:"⛏️ 制作中"},
   {id:"craft_potion", name:"制作治疗药水", in:{herder:1, herb:3}, out:[{type:"potion",n:1}], sec:8, consume:true, kind:"craft", label:"🧪 制作中"},
   // —— 冶炼（需冶炼厂）——
   {id:"smelt_iron", name:"冶炼铁锭", in:{herder:1, ironore:2}, out:[{type:"ironingot",n:1}], sec:10, consume:true, kind:"smelt", need:"smelter", label:"⚙️ 冶炼中"},
   {id:"smelt_gold", name:"冶炼金锭", in:{herder:1, goldore:2}, out:[{type:"goldingot",n:1}], sec:15, consume:true, kind:"smelt", need:"smelter", label:"🪙 冶炼中"},
   // —— 烹饪（全部需厨房）——
-  {id:"mill_flour", name:"磨面粉", in:{herder:1, wheat:2}, out:[{type:"flour",n:1}], sec:5, consume:true, kind:"cook", need:"kitchen", label:"🌾 磨粉中"},
+  {id:"mill_flour", name:"磨面粉", in:{herder:1, wheat:2}, out:[{type:"flour",n:1}], sec:5, consume:true, kind:"cook", label:"🌾 磨粉中"},
   {id:"cook_bread", name:"烤面包", in:{herder:1, milk:1, flour:1}, out:[{type:"bread",n:1}], sec:8, consume:true, kind:"cook", need:"kitchen", label:"🍞 烘焙中"},
   {id:"cook_meat", name:"烤肉", in:{herder:1, rawmeat:1}, out:[{type:"cookedmeat",n:1}], sec:6, consume:true, kind:"cook", need:"kitchen", label:"🍖 烤肉中"},
   {id:"cook_platter", name:"果蔬拼盘", in:{herder:1, blueberry:3}, out:[{type:"fruitplatter",n:1}], sec:10, consume:true, kind:"cook", need:"kitchen", label:"🥗 拼盘中"},
@@ -168,9 +172,9 @@ export const RECIPES = [
   // 牛是持续资产：牧民+任意品种牛 产奶不消耗牛（品种间配方通用，见 COW_KINDS）
   {id:"milk_cow", name:"挤牛奶", in:{herder:1, cow:1}, out:[{type:"milk",n:1}], sec:4, consume:false, kind:"produce", label:"🥛 挤奶中"},
   {id:"breed_baby", name:"繁殖", in:{herder:2, house:1}, out:[{type:"herder",n:1}], sec:10, consume:true, kind:"breed", cooldown:120, label:"👶 繁殖中"},
-  // —— 建筑生产（被动，建筑已建好后的自动产出）——
-  {id:"prod_lumberyard", name:"伐木", in:{herder:1, lumberyard:1}, out:[{type:"wood",n:3}], sec:6, consume:false, kind:"produce", label:"🪓 生产中"},
-  {id:"prod_quarry", name:"采石", in:{herder:1, quarry:1}, out:[{type:"stone",n:3}], sec:6, consume:false, kind:"produce", label:"⚒️ 生产中"},
+  // —— 建筑生产（被动，需工具：斧头/镐子，工具不消耗）——
+  {id:"prod_lumberyard", name:"伐木", in:{herder:1, lumberyard:1, axe:1}, out:[{type:"wood",n:3}], sec:6, consume:false, kind:"produce", label:"🪓 生产中"},
+  {id:"prod_quarry", name:"采石", in:{herder:1, quarry:1, pickaxe:1}, out:[{type:"stone",n:3}], sec:6, consume:false, kind:"produce", label:"⚒️ 生产中"},
   // —— 采集（资源点，每次采集消耗 charges，归零即消失；麦田一次性）——
   {id:"gather_wood", name:"伐木", in:{herder:1, tree:1}, out:[{type:"wood",n:2},{type:"branch",n:1}], sec:8, consume:false, kind:"produce", label:"🌳 砍伐中"},
   {id:"gather_stone", name:"采石", in:{herder:1, rock:1}, out:[{type:"stone",n:2}], sec:8, consume:false, kind:"produce", label:"⛰️ 采石中"},

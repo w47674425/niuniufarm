@@ -5,7 +5,15 @@ import { rand } from './utils.js';
 import { mk, makePile } from './state.js';
 import { render, updateHUD, toast } from './render.js';
 import { buyPack } from './systems.js';
+import { cardArt } from './art.js';
 import * as audio from './audio.js';
+
+// 卡图标签：有正式图 → <img>，否则退回 emoji（cls 控制尺寸）
+function artTag(type, cls) {
+  const src = cardArt(type);
+  if (src) return '<img class="art-mini' + (cls ? " " + cls : "") + '" src="' + src + '" alt="" />';
+  return META[type] ? META[type].emoji : "❓";
+}
 
 function closeModal(game, ov) {
   if (ov && ov.parentNode) { ov.parentNode.removeChild(ov); audio.play("ui.close"); }
@@ -85,7 +93,7 @@ export function showCodex(game) {
     const n = gets[t] || 0;
     html += '<div class="codex-cell' + (seen ? "" : " locked") + '">' +
       (n > 0 ? '<span class="cc-count">×' + n + '</span>' : '') +
-      '<div class="cc-emoji">' + (seen ? m.emoji : "❓") + '</div>' +
+      '<div class="cc-emoji">' + (seen ? artTag(t, "cc-img") : "❓") + '</div>' +
       '<div class="cc-name">' + (seen ? m.label : "未解锁") + '</div></div>';
   });
   html += '</div><button class="close" id="codexClose">关闭</button>';
@@ -116,7 +124,7 @@ export function showCollection(game) {
       const has = n > 0;
       html += '<div class="codex-cell' + (has ? "" : " locked") + '">' +
         (has ? '<span class="cc-count">×' + n + '</span>' : '') +
-        '<div class="cc-emoji">' + (has ? m.emoji : "❓") + '</div>' +
+        '<div class="cc-emoji">' + (has ? artTag(t, "cc-img") : "❓") + '</div>' +
         '<div class="cc-name">' + (has ? m.label : "未收集") + '</div></div>';
     });
     html += '</div>';
@@ -147,6 +155,18 @@ const OUT_MAKER = {};
 RECIPES.forEach(r => {
   r.out.forEach(o => { if (!OUT_MAKER[o.type]) OUT_MAKER[o.type] = r.id; });
 });
+// 配方前置建筑（need 字段 → 建筑名；breed/train 隐含房屋）
+const NEED_LABEL = {
+  kitchen: "🍳 厨房",
+  smelter: "🔥 冶炼厂",
+  house: "🏠 房屋"
+};
+function needLabel(r) {
+  if (r.need && NEED_LABEL[r.need]) return NEED_LABEL[r.need];
+  if (r.kind === "breed") return NEED_LABEL.house;
+  if (r.kind === "train") return NEED_LABEL.house;
+  return null;
+}
 
 function fmtCards(cards) {
   const parts = [];
@@ -154,17 +174,33 @@ function fmtCards(cards) {
     const maker = OUT_MAKER[k]; // 该输入卡是否可由其他配方合成
     if (maker) {
       // 可合成的输入 → 链接，点击滚动到对应配方并高亮
-      parts.push('<a class="ri-link" data-maker="' + maker + '">' + META[k].emoji + " " + META[k].label + "×" + cards[k] + '</a>');
+      parts.push('<a class="ri-link" data-maker="' + maker + '">' + artTag(k, "ri-img") + " " + META[k].label + "×" + cards[k] + '</a>');
     } else {
-      parts.push(META[k].emoji + " " + META[k].label + "×" + cards[k]);
+      parts.push(artTag(k, "ri-img") + " " + META[k].label + "×" + cards[k]);
     }
   });
   return parts.join(" + ");
 }
+// 材料 → 使用它的配方（产物若被别的配方当作输入，点击可跳到"用它"的配方）
+const USED_BY = {};
+RECIPES.forEach(r => {
+  Object.keys(r.in).forEach(k => {
+    if (k === "herder" || k === "dog") return; // 单位不是"材料"
+    if (!USED_BY[k]) USED_BY[k] = [];
+    USED_BY[k].push(r.id);
+  });
+});
 function fmtOut(out) {
   if (!out || out.length === 0) return ""; // 无产出（食用/装备等）不显示
   // 多个产出物每个占一行；不显示数量
-  return out.map(o => META[o.type].emoji + " " + META[o.type].label).join('<br>');
+  return out.map(o => {
+    const users = USED_BY[o.type];
+    if (users && users.length > 0) {
+      // 该产物是其他配方的材料 → 链接到第一个使用它的配方
+      return '<a class="ri-link ri-out-link" data-maker="' + users[0] + '">' + artTag(o.type, "ri-img") + " " + META[o.type].label + '</a>';
+    }
+    return artTag(o.type, "ri-img") + " " + META[o.type].label;
+  }).join('<br>');
 }
 // 配方难度评分（升序=易→难）：
 //   前置建筑 +20 ｜ 输入卡种类数 ×5 ｜ 冗余材料(超出种类的张数) ×2 ｜ 耗时 sec/10（上限 +3）
@@ -186,9 +222,11 @@ export function showRecipes(game) {
     html += '<h3>' + g.label + '</h3><div class="recipe-list">';
     list.forEach(r => {
       const outHtml = fmtOut(r.out);
+      const need = needLabel(r);
       html += '<div class="recipe-item" id="ri-' + r.id + '">' +
         (outHtml ? '<div class="ri-out">' + outHtml + '</div><div class="ri-arrow">←</div>' : '') +
         '<div class="ri-in">' + fmtCards(r.in) + '</div>' +
+        (need ? '<div class="ri-need">' + need + '</div>' : '') +
         '<div class="ri-sec">' + r.sec + 's</div></div>';
     });
     html += '</div>';
@@ -256,6 +294,7 @@ export function showSettings(game) {
     '</div>' +
     '<div class="row">' +
     '<button class="btn alt" id="testGoldBtn">💰 测试 +1000</button>' +
+    '<button class="btn alt" id="helpBtn">❔ 玩法帮助</button>' +
     '<button class="btn alt" id="resetBtn">🗑 重置存档</button>' +
     '<button class="close" id="closeSet">关闭</button>' +
     '</div>');
@@ -281,6 +320,12 @@ export function showSettings(game) {
     toast(game, "💰 测试金币 +1000（现有 ¥" + game.state.gold + "）");
   };
   document.getElementById("resetBtn").onclick = function () { game.resetGame(); };
+  // 帮助入口：关闭设置 → 打开玩法帮助
+  document.getElementById("helpBtn").onclick = function () {
+    audio.play("ui.click");
+    closeModal(game, ov);
+    toggleModal(game, "help", () => showHelp(game));
+  };
   document.getElementById("closeSet").onclick = function () { closeModal(game, ov); };
   return ov;
 }

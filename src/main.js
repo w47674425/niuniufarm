@@ -29,7 +29,6 @@ const refs = {
   codexBtn: document.getElementById('codexBtn'),
   recipeBtn: document.getElementById('recipeBtn'),
   collectBtn: document.getElementById('collectBtn'),
-  helpBtn: document.getElementById('helpBtn'),
   setBtn: document.getElementById('setBtn')
 };
 

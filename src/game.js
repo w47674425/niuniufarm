@@ -53,24 +53,24 @@ export class Game {
       audio.play("badge");
     };
     // 切到后台/切出标签页：自动暂停（回到前台不自动继续，防时间流逝）
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden && !this.state.paused && !this.state.gameOver) {
-        this.state.paused = true;
-        syncPause();
-      }
-    });
-    window.addEventListener("blur", () => {
-      if (!this.state.paused && !this.state.gameOver) {
-        this.state.paused = true;
-        syncPause();
-      }
-    });
+    // 【暂时关闭 2026-08-20】切后台自动暂停：visibilitychange/blur 监听已停用
+    // document.addEventListener("visibilitychange", () => {
+    //   if (document.hidden && !this.state.paused && !this.state.gameOver) {
+    //     this.state.paused = true;
+    //     syncPause();
+    //   }
+    // });
+    // window.addEventListener("blur", () => {
+    //   if (!this.state.paused && !this.state.gameOver) {
+    //     this.state.paused = true;
+    //     syncPause();
+    //   }
+    // });
     this.refs.packBtn.onclick = () => { if (!this.state.gameOver) { audio.play("ui.click"); toggleModal(this, "shop", () => showShop(this)); } };
     this.refs.taskBtn.onclick = () => { if (!this.state.gameOver) { audio.play("ui.click"); toggleModal(this, "tasks", () => showTasks(this)); } };
     this.refs.codexBtn.onclick = () => { audio.play("ui.click"); toggleModal(this, "codex", () => showCodex(this)); };
     this.refs.recipeBtn.onclick = () => { audio.play("ui.click"); toggleModal(this, "recipes", () => showRecipes(this)); };
     this.refs.collectBtn.onclick = () => { audio.play("ui.click"); toggleModal(this, "collect", () => showCollection(this)); };
-    this.refs.helpBtn.onclick = () => { audio.play("ui.click"); toggleModal(this, "help", () => showHelp(this)); };
     this.refs.setBtn.onclick = () => { audio.play("ui.click"); toggleModal(this, "settings", () => showSettings(this)); };
     // 空格键：暂停/继续（输入框聚焦时不触发）
     window.addEventListener("keydown", (e) => {
