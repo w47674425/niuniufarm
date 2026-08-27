@@ -42,6 +42,22 @@ async function getUrl() {
   try { await send('Network.clearBrowserCache'); } catch(e){}
   const ev = async (expr) => { const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true }); return r.result && r.result.value; };
   // 注入：已开礼包存档（无 isPack pile → packOpened 语义 true）
+  await send('Page.addScriptToEvaluateOnNewDocument', { source: `try{localStorage.removeItem('niuniu_ranch_save_v1');localStorage.removeItem('niuniu_tutorial_done_v1');}catch(e){}` });
+  await send('Page.navigate', { url: APP });
+  await sleep(3800);
+
+  // ============ 首页「新手教程」按钮（新需求）：无存档首页 → 点击 → 进入教程 ============
+  const homeBtn = await ev(`JSON.stringify({tutBtn:!!document.getElementById('homeTut'), home:!!document.querySelector('.home-overlay')})`);
+  const hb = JSON.parse(homeBtn);
+  ok('首页存在「新手教程」按钮', !!hb.tutBtn && !!hb.home, homeBtn);
+  await ev(`document.getElementById('homeTut').click()`);
+  await sleep(1000);
+  const tutFromHome = JSON.parse(await ev(`JSON.stringify({homeGone:!document.querySelector('.home-overlay'), tut:!!document.querySelector('.tut'), title:(document.getElementById('tutTitle')||{}).textContent||'NO'})`));
+  ok('首页点新手教程：进入教程且首页遮罩被清', !!tutFromHome.homeGone && !!tutFromHome.tut && (tutFromHome.title||'').includes('打开新手礼包'), JSON.stringify(tutFromHome));
+  await ev(`(()=>{const b=document.getElementById('tutSkip'); if(b) b.click();})()`); // 跳过，避免污染后续
+  await sleep(800);
+
+  // ============ 原场景：从已开礼包存档的「设置」进教程 → 第 0 步不得自动完成 ============
   await send('Page.addScriptToEvaluateOnNewDocument', { source: `try{localStorage.setItem('niuniu_ranch_save_v1', JSON.stringify({day:2,timeLeft:40,phase:'day',gold:50,seenCards:{},cardGets:{},collection:{},tasksDone:{},lastSave:Date.now(),piles:[{x:500,y:500,cards:[{type:'herder',hp:5,fed:5,name:'一一'}]}]}));localStorage.removeItem('niuniu_tutorial_done_v1');}catch(e){}` });
   await send('Page.navigate', { url: APP });
   await sleep(3800);

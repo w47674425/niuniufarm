@@ -5,6 +5,7 @@
 import { loadMeta } from './systems.js';
 import { showSettings } from './modals.js';
 import { countType } from './state.js';
+import { startTutorial } from './tutorial.js';
 import { META } from './config.js';
 import * as audio from './audio.js';
 
@@ -49,6 +50,7 @@ export function showHome(game) {
       '</div>' +
       '<div class="home-row">' +
         '<button class="home-mini" id="homePass"><img src="img/ui_passport.png" alt="" />旅行护照</button>' +
+        '<button class="home-mini" id="homeTut">🎓 新手教程</button>' +
         '<button class="home-mini" id="homeAch"><img src="img/ui_achievement.png" alt="" />成就</button>' +
         '<button class="home-mini" id="homeSet">⚙️ 设置</button>' +
       '</div>' +
@@ -67,6 +69,7 @@ export function showHome(game) {
   };
   // 护照/成就/设置：叠加在首页之上（不关闭首页），关闭后仍停留首页（验收反馈⑬）
   document.getElementById('homePass').onclick = () => { audio.play('ui.click'); showPassport(game); };
+  document.getElementById('homeTut').onclick = () => { audio.play('ui.click'); startTutorial(game); };
   document.getElementById('homeAch').onclick = () => { audio.play('ui.click'); showAchievements(game); };
   document.getElementById('homeSet').onclick = () => { audio.play('ui.click'); showSettings(game, { attachApp: true }); };
   return ov;
