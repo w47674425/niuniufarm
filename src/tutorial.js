@@ -218,6 +218,7 @@ export function startTutorial(game) {
     const h1 = mk(game, 'herder'), h2 = mk(game, 'herder');
     h1.name = '一一'; h2.name = '二二'; // 牧民命名（策划图鉴）
     h1.fed = foodCapOf('herder');
+    h1.fed = 2; // 一一先饿着（2/5），步骤④喂蓝莓有真实反馈（2→3）
     h2.fed = 2; // 二二先饿着（2/5），步骤④喂蓝莓有真实反馈（2→3）
     const bc = mk(game, 'border_collie'); bc.fed = foodCapOf('border_collie');
     // 固定布局：牧民×2 左列、资源点右列、木/狗中列（与下方教学材料呼应，高亮可定位）
