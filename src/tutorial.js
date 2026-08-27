@@ -30,7 +30,8 @@ const STEPS = [
     title: '① 打开新手礼包',
     text: '点击中间的新手礼包，开出牧场起步卡：牧民（一一、二二）、边牧、树木、蓝莓丛、木头、石头。',
     targets: ['packobj'],
-    check: (g) => !!g.state.packOpened
+    // 用教程沙盘自己的标记判定（不能用全局 state.packOpened——从已开过礼包的存档进教程时它已是 true，会误判跳过）
+    check: (g) => !!(g.tutorial && g.tutorial.packOpened)
   },
   {
     title: '② 拖牧民到树木',
@@ -190,6 +191,7 @@ export function startTutorial(game) {
   game.board.querySelectorAll('.card,.pileprog,.packobj,.overlay').forEach(el => el.remove());
   st.piles = [];
   st.day = 1; st.timeLeft = 9999; st.phase = 'day';
+  st.packOpened = false; // 教程沙盘独立管理礼包状态（第 0 步用 tutorial.packOpened 判定）
   game.app.classList.remove('night');
   game._openModal = null; game._openOv = null;
 
@@ -208,6 +210,7 @@ export function startTutorial(game) {
     if (pack._done) return;
     pack._done = true;
     game.state.packOpened = true; // 第 0 步完成信号
+    if (game.tutorial) game.tutorial.packOpened = true; // 教程沙盘自己的标记（见 STEPS[0].check）
     const oldEl = game.board.querySelector('.packobj');
     if (oldEl) oldEl.remove();
     removePile(game, pack);
@@ -236,6 +239,7 @@ export function startTutorial(game) {
 
   const tut = {
     step: 0, factory, fPile, wPile,
+    packOpened: false, // 教程礼包是否已打开（第 0 步判定，与全局 state.packOpened 隔离）
     flags: {}, _advanced: false, _poll: null,
     notify(type, payload) {
       // 买动物店卡包才算完成第 7 步
