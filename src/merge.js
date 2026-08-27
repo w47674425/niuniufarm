@@ -1,18 +1,27 @@
 // 堆行为规则层（纯逻辑，不碰 DOM）：配方匹配 / 堆行为解释 / 执行 / 战斗
 // 原「合并 / 产出 / 喂草」规则已由数据驱动的 RECIPES 配方表取代（对齐资料库准绳版）
 
-import { META, RECIPES, COMBAT_SEC, foodCapOf, COW_BREEDS, TICKET, D_WORK, NIGHT_DRAIN_MULT } from './config.js';
+import { META, RECIPES, COMBAT_SEC, foodCapOf, COW_BREEDS, DOG_BREEDS, TICKET } from './config.js';
 import { mk, countType, removeCardObj, markSeen, maxStack, spawnNear } from './state.js';
-import { moraleMult, drainSpirit } from './spirit.js';
 import * as audio from './audio.js';
 
 export function isFood(type) { return !!(META[type] && META[type].cat === "food"); }
 export function isSellable(type) { return !!(META[type] && META[type].sale > 0); }
 
-// 牛家族：配方 in:{cow:1} 匹配任意品种（变异牛 + 主题牛和牛/冰原牛 都算 cow）
+// 牛家族：配方 in:{cow:1} 匹配任意品种（变异牛 都算 cow）
 const COW_ALIAS = {};
 COW_BREEDS.forEach(t => { COW_ALIAS[t] = "cow"; });
 Object.keys(META).forEach(t => { if (META[t].cowKind === "cow") COW_ALIAS[t] = "cow"; });
+
+// 牧羊犬家族：5 种狗（宠物店）归入 "dog"，装备/药水/战斗配方 in:{dog:1} 对任意狗生效
+const DOG_ALIAS = {};
+DOG_BREEDS.forEach(t => { DOG_ALIAS[t] = "dog"; });
+export function isDogCard(c) { return !!(c && (c.type === "dog" || DOG_ALIAS[c.type])); }
+
+// 单位别名：牧民 + 任意狗 都归 "unit"（进食配方 in:{unit:1} 通用，属性点表）
+const UNIT_ALIAS = { herder: "unit", dog: "unit" };
+DOG_BREEDS.forEach(t => { UNIT_ALIAS[t] = "unit"; });
+export function isUnitCard(c) { return !!(c && (c.type === "herder" || isDogCard(c))); }
 
 // ===================== pileAction：解释每堆的行为 =====================
 // 返回 {type, sec, label, recipe} 或 null
@@ -21,12 +30,12 @@ export function pileAction(game, p) {
   if (cards.length === 0) return null;
   const monster = cards.find(c => META[c.type].cat === "mon");
   const hasHerder = cards.some(c => c.type === "herder");
-  const hasDog = cards.some(c => c.type === "dog");
+  const hasDog = cards.some(isDogCard);
   // 战斗：怪物 + 防御者(牧民/狗) 同堆
   if (monster && (hasHerder || hasDog)) return { type: "fight", sec: COMBAT_SEC, label: "⚔️ 战斗中", recipe: null };
   // 配方匹配
   const r = matchRecipe(game, p);
-  if (r) return { type: r.id, sec: r.sec * moraleMult(game), label: r.label, recipe: r };
+  if (r) return { type: r.id, sec: r.sec, label: r.label, recipe: r };
   return null;
 }
 
@@ -35,7 +44,7 @@ export function pileAction(game, p) {
 // 再次 建造/制作/冶炼/烹饪，最低 被动生产(采集/建筑产出)。
 // 同级内取"输入卡数最多(最具体)"的配方，以正确处理"包含关系"的配方，
 // 例如 木头×2+石头 既能建房屋也能建伐木场(木头×4+石头)，应优先建伐木场。
-const KIND_PRI = { eat: 3, potion: 3, equip: 3, slaughter: 2, breed: 2, train: 2, build: 1, craft: 1, smelt: 1, cook: 1, produce: 0 };
+const KIND_PRI = { eat: 3, potion: 3, equip: 3, boost: 2, slaughter: 2, breed: 2, train: 2, build: 1, craft: 1, smelt: 1, cook: 1, produce: 0 };
 
 function recipeWeight(r) {
   let s = 0;
@@ -49,6 +58,13 @@ export function matchRecipe(game, p) {
     // 牛品种归一到家族名，使配方 in:{cow:1} 对任意品种生效
     const key = COW_ALIAS[c.type] || c.type;
     cnt[key] = (cnt[key] || 0) + 1;
+    // 狗同时计入 dog 与 unit（装备配方 in:{dog:1} + 进食配方 in:{unit:1} 都可用）
+    if (c.type === "dog" || DOG_ALIAS[c.type]) {
+      cnt.dog = (cnt.dog || 0) + 1;
+      cnt.unit = (cnt.unit || 0) + 1;
+    }
+    // 牧民计入 unit（进食通用）
+    if (c.type === "herder") cnt.unit = (cnt.unit || 0) + 1;
   });
   let best = null, bestW = null;
   for (let i = 0; i < RECIPES.length; i++) {
@@ -60,9 +76,14 @@ export function matchRecipe(game, p) {
       const quotaCow = p.cards.some(c => META[c.type] && META[c.type].cowKind && (c.milkToday || 0) < 2);
       if (!quotaCow) continue;
     }
-    // 伐木场/采石场每日限量 3 次
-    if (r.id === "prod_lumberyard" && (game.state.lumberToday || 0) >= 3) continue;
-    if (r.id === "prod_quarry" && (game.state.quarryToday || 0) >= 3) continue;
+    // 羊每日限量：每只羊每天产毛 2 瓶×1 次（配额跟羊走）
+    if (r.id === "sheep_wool") {
+      const quotaSheep = p.cards.some(c => c.type === "sheep" && (c.sheepToday || 0) < 1);
+      if (!quotaSheep) continue;
+    }
+    // 伐木场/采石场每日限量 1 次（策划：产出×6+3）
+    if (r.id === "prod_lumberyard" && (game.state.lumberToday || 0) >= 1) continue;
+    if (r.id === "prod_quarry" && (game.state.quarryToday || 0) >= 1) continue;
     let ok = true;
     for (const k in r.in) { if ((cnt[k] || 0) < r.in[k]) { ok = false; break; } }
     if (!ok) continue;
@@ -129,7 +150,12 @@ function applyRecipe(game, p, r) {
     const cow = p.cards.find(c => META[c.type] && META[c.type].cowKind && (c.milkToday || 0) < 2);
     if (cow) cow.milkToday = (cow.milkToday || 0) + 1;
   }
-  // 伐木场/采石场每日限量 3 次
+  // 剪毛计数：配额跟羊走（每只羊每天 1 次）
+  if (r.id === "sheep_wool") {
+    const sheep = p.cards.find(c => c.type === "sheep" && (c.sheepToday || 0) < 1);
+    if (sheep) sheep.sheepToday = (sheep.sheepToday || 0) + 1;
+  }
+  // 伐木场/采石场每日限量 1 次
   if (r.id === "prod_lumberyard") game.state.lumberToday = (game.state.lumberToday || 0) + 1;
   if (r.id === "prod_quarry") game.state.quarryToday = (game.state.quarryToday || 0) + 1;
   // 资源点采集次数：每次采集 -1，归零即消耗消失（仅采集类配方：输入含 node 卡）
@@ -146,7 +172,7 @@ function applyRecipe(game, p, r) {
   }
   // 繁殖冷却（房屋 120s）
   if (r.kind === "breed") { p.cd = r.cooldown; }
-  // 即时效果
+  // 即时效果：进食（unit 通用：牧民或狗，优先牧民）
   if (r.kind === "eat" || r.kind === "potion") {
     // 药水一次一次消耗：每次使用扣 1 次；用完即消失；
     // 若还有剩余则从堆中弹出掉落到旁边（需玩家重新拖放才用第二次，避免自动连用）
@@ -160,47 +186,46 @@ function applyRecipe(game, p, r) {
         game.state._drops.push({ from: p, to: target });
       }
     }
-    const h = p.cards.find(c => c.type === "herder");
-    if (h) {
-      if (r.foodGain) { h.fed = Math.min(foodCapOf(h.type), (h.fed || 0) + r.foodGain); toast(game, "🍽 " + r.name + "：饱食 " + h.fed); }
-      if (r.hpGain) { if (h.hp == null) h.hp = META.herder.hp; h.hp += r.hpGain; toast(game, "❤️ " + r.name + "：血量+" + r.hpGain + (potion && potion.charges > 0 ? "（药水剩 " + potion.charges + " 次）" : "")); }
+    // 进食目标：优先牧民，其次任意狗
+    const eater = p.cards.find(c => c.type === "herder") || p.cards.find(isDogCard);
+    if (eater) {
+      if (r.foodGain) { eater.fed = Math.min(foodCapOf(eater.type), (eater.fed || 0) + r.foodGain); toast(game, "🍽 " + META[eater.type].label + " 食用" + r.name + "：饱食 " + eater.fed); }
+      if (r.hpGain) { if (eater.hp == null) eater.hp = META[eater.type].hp; eater.hp += r.hpGain; toast(game, "❤️ " + r.name + "：血量+" + r.hpGain + (potion && potion.charges > 0 ? "（药水剩 " + potion.charges + " 次）" : "")); }
     }
-    // 药水治狗（use_potion_dog 配方：狗+药水）
-    const dog = p.cards.find(c => c.type === "dog");
-    if (r.hpGain && dog) {
-      if (dog.hp == null) dog.hp = META.dog.hp;
-      dog.hp += r.hpGain;
-      toast(game, "🐕 牧羊犬使用" + r.name + "：血量+" + r.hpGain);
+  }
+  // 同种狗强化（属性点表）：保留第一只，消耗第二只，攻/血成长
+  if (r.kind === "boost") {
+    const breed = Object.keys(r.in).find(k => META[k] && META[k].cat === "unit" && DOG_BREEDS.includes(k));
+    if (breed) {
+      const dogs = p.cards.filter(c => c.type === breed);
+      if (dogs.length >= 2) {
+        const keep = dogs[0], sacrifice = dogs[1];
+        keep.atkBonus = (keep.atkBonus || 0) + (r.atk || 0);
+        keep.hpBonus = (keep.hpBonus || 0) + (r.hp || 0);
+        removeCardObj(game, sacrifice);
+        toast(game, "🐕 " + META[breed].label + " 训练完成！攻击+" + (r.atk || 0) + " 血量+" + (r.hp || 0));
+      }
     }
   }
   if (r.kind === "equip") {
     // 装备只给牧羊犬穿戴（牧民不能穿）
-    const dog = p.cards.find(c => c.type === "dog");
+    const dog = p.cards.find(isDogCard);
     if (dog) {
       dog.atkBonus = (dog.atkBonus || 0) + (r.atk || 0);
       dog.hpBonus = (dog.hpBonus || 0) + (r.hp || 0);
-      toast(game, "🛡️ 牧羊犬装备成功！攻击+" + (r.atk || 0) + " 血量+" + (r.hp || 0));
+      toast(game, "🛡️ " + META[dog.type].label + " 装备成功！攻击+" + (r.atk || 0) + " 血量+" + (r.hp || 0));
     }
   }
   if (r.kind === "build") { toast(game, "🔨 建成：" + r.name.replace("建造", "")); }
   else if (r.kind === "breed") { toast(game, "👶 一名新牧民出生！"); }
   else if (r.kind === "train") { toast(game, "🐕 牧羊犬训练完成！"); }
   else if (r.kind === "slaughter") { toast(game, "🔪 宰杀完成，获得生肉"); }
-  // 精神系统（§4.6）：主动打工损耗。配方完成 → 参与工人 -dWork（夜班 ×2）
-  // 繁殖（breed）是被动自动发生、非"主动打工"，不扣精神
-  if (r.kind !== "breed") {
-    const worker = p.cards.find(c => c.type === "herder");
-    if (worker) {
-      const mult = game.state.phase === "night" ? NIGHT_DRAIN_MULT : 1;
-      drainSpirit(game, worker, D_WORK * mult);
-    }
-  }
 }
 
 // 战斗一步：防御者攻击怪物，怪物反击
 function fightStep(game, p) {
   const monster = p.cards.find(c => META[c.type].cat === "mon");
-  const def = p.cards.find(c => c.type === "dog") || p.cards.find(c => c.type === "herder");
+  const def = p.cards.find(isDogCard) || p.cards.find(c => c.type === "herder");
   if (!monster || !def) return;
   if (monster.hp == null) monster.hp = META[monster.type].hp;
   if (def.hp == null) def.hp = META[def.type].hp;

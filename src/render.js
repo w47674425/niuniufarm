@@ -1,11 +1,10 @@
 // 渲染层：把状态画到 DOM 上（对齐资料库准绳版「渲染 / HUD」区块）
 
-import { CARD_W, CARD_H, STACK_OFF, META, DAY_LEN, DAY_FRAC, foodCapOf, TICKET, destById } from './config.js';
+import { CARD_W, CARD_H, STACK_OFF, META, DAY_LEN, DAY_FRAC, foodCapOf, TICKET, DOG_BREEDS } from './config.js';
 import { clamp } from './utils.js';
 import { allCards, countType, popCount } from './state.js';
 import { pileAction } from './merge.js';
 import { cardArt } from './art.js';
-import { moraleAvg, moraleLevel } from './spirit.js';
 
 export function fmtTime(s) {
   s = Math.max(0, Math.ceil(s));
@@ -20,39 +19,6 @@ export function updateHUD(game) {
   const ph = game.refs.phaseTag;
   if (st.phase === "day") { ph.textContent = "☀️"; ph.className = "stat"; ph.classList.add("day"); }
   else { ph.textContent = "🌙"; ph.className = "stat"; ph.classList.add("night"); }
-  // 地标目标 HUD：进入目的地后常驻显示本章目标（材料+金币进度），可建造时高亮
-  const goal = game.refs.goalStat;
-  if (goal) {
-    if (st.destId && st.landmarkBuilt) {
-      goal.hidden = false;
-      goal.textContent = "✅ 旅程达成";
-      goal.classList.remove("ready");
-    } else if (st.destId) {
-      const dest = destById(st.destId);
-      if (dest) {
-        const lm = dest.landmark;
-        let matsOk = true;
-        let matsHave = 0, matsNeed = 0;
-        Object.keys(lm.need).forEach(t => {
-          const have = countType(game, t);
-          const need = lm.need[t];
-          matsHave += Math.min(have, need); matsNeed += need;
-          if (have < need) matsOk = false;
-        });
-        const ticketOk = st.gold >= lm.tickets;
-        const ready = matsOk && ticketOk;
-        goal.hidden = false;
-        let txt;
-        if (ready) txt = "🏗️ " + lm.name + " 可建造！";
-        else if (matsOk) txt = lm.emoji + " " + lm.name + " " + TICKET + Math.min(st.gold, lm.tickets) + "/" + lm.tickets + " 材料✓";
-        else txt = lm.emoji + " " + lm.name + " " + TICKET + Math.min(st.gold, lm.tickets) + "/" + lm.tickets + " ✦" + matsHave + "/" + matsNeed;
-        goal.textContent = txt;
-        goal.classList.toggle("ready", ready);
-      }
-    } else {
-      goal.hidden = true;
-    }
-  }
   // 正式背景图：用内联样式图层，避免构建后 CSS 相对路径(resolve 到 dist/assets)导致 404
   const app = game.app;
   if (app) {
@@ -78,27 +44,13 @@ export function updateHUD(game) {
   const warn = (st.phase === "day" && st.timeLeft <= nightAt + 10);
   game.refs.timer.classList.toggle("night-warn", warn);
   game.refs.goldStat.textContent = TICKET + " " + st.gold;
-  // 团队士气 HUD（精神系统 §4.6）：进入目的地后显示 💚均值，<40 红色预警、≥70 绿色
-  const moraleEl = game.refs.moraleStat;
-  if (moraleEl) {
-    if (st.destId) {
-      moraleEl.hidden = false;
-      moraleEl.textContent = "💚 " + Math.round(moraleAvg(game));
-      moraleEl.classList.remove("low", "high");
-      const lvl = moraleLevel(game);
-      if (lvl === "low") moraleEl.classList.add("low");
-      else if (lvl === "high") moraleEl.classList.add("high");
-    } else {
-      moraleEl.hidden = true;
-    }
-  }
   // 刷新统计（任务依赖）
   st.stats.herders = popCount(game);
   st.stats.houses = countType(game, "house");
   st.stats.walls = countType(game, "wall");
   st.stats.smelters = countType(game, "smelter");
   st.stats.gold = st.gold;
-  st.stats.equipped = allCards(game).filter(c => c.type === "dog" && (c.atkBonus || 0) > 0).length;
+  st.stats.equipped = allCards(game).filter(c => (c.type === "dog" || DOG_BREEDS.includes(c.type)) && (c.atkBonus || 0) > 0).length;
 }
 
 export function toast(game, msg) {
@@ -157,8 +109,8 @@ export function render(game) {
       el.style.zIndex = (pi * 20 + ci);
       el.setAttribute("data-id", c.id);
       let html = '';
-      // 牧民/牧羊犬：血量以卡片背景色块呈现（血多绿、中黄、低红）
-      if (c.type === "herder" || c.type === "dog") {
+      // 单位（牧民/牧羊犬等）：血量以卡片背景色块呈现（血多绿、中黄、低红）
+      if (meta.cat === "unit") {
         const hpc = c.hp != null ? c.hp : meta.hp;
         const max = (meta.hp || 0) + (c.hpBonus || 0);
         const pct = clamp(Math.round(hpc / max * 100), 0, 100);
@@ -179,12 +131,6 @@ export function render(game) {
         const max2 = (meta.hp || 0) + (c.hpBonus || 0);
         html += '<div class="cb">⚔️' + atk + ' ❤️' + cur + '/' + max2 + '</div>';
       }
-      // 工人精神徽标（卡片右上角，精神系统 §4.6）：绿=充足 / 黄=偏低 / 红=危险
-      if (c.type === "herder" && c.spirit != null) {
-        const sp = Math.round(c.spirit);
-        const cls = sp >= 70 ? "ok" : (sp >= 40 ? "warn" : "bad");
-        html += '<div class="spirit-tag ' + cls + '">💚' + sp + '</div>';
-      }
       // 所有单位显示饱食度（上限取该单位自身配置）
       if (meta.cat === "unit" && c.fed != null) {
         html += '<div class="cb">饱食 ' + c.fed + '/' + foodCapOf(c.type) + '</div>';
@@ -198,9 +144,52 @@ export function render(game) {
         html += '<div class="cb">' + meta.note + '</div>';
       }
       el.innerHTML = html;
+      bindCardTip(game, el, c);
       board.appendChild(el);
     });
   });
+}
+
+// ===================== 卡牌介绍浮层（迭代7·UI 修改意见①：悬停/长按查看卡牌介绍） =====================
+// 桌面：mouseenter 显示、mouseleave 隐藏；移动端：长按 300ms 显示（拖动/滚动取消），松手后隐藏
+const CAT_LABEL = { unit: "单位", res: "资源", food: "食物", build: "建筑", life: "牲畜", tech: "科技", node: "资源点", item: "物品", mon: "怪物" };
+let _tipEl = null;
+let _tipTimer = null;
+function hideTip() {
+  if (_tipTimer) { clearTimeout(_tipTimer); _tipTimer = null; }
+  if (_tipEl) { _tipEl.remove(); _tipEl = null; }
+}
+function bindCardTip(game, el, c) {
+  const meta = META[c.type] || { emoji: "❓", label: c.type, cat: "res" };
+  function show() {
+    // 拖拽中的卡不弹介绍
+    if (game.state.drag && game.state.drag.moving && game.state.drag.moving.indexOf(c) >= 0) return;
+    hideTip();
+    _tipEl = document.createElement("div");
+    _tipEl.className = "cardtip";
+    const catName = CAT_LABEL[meta.cat] || meta.cat;
+    const price = meta.sale ? TICKET + meta.sale : "不可售";
+    _tipEl.innerHTML =
+      '<div class="ct-head">' + (meta.emoji || "❓") + ' ' + (meta.label || c.type) + '<span class="ct-cat">' + catName + '</span></div>' +
+      '<div class="ct-body">' + (meta.note || "暂无说明") + '</div>' +
+      '<div class="ct-foot">售价 ' + price + '</div>';
+    const bs = game.boardSize();
+    const cardRect = el.getBoundingClientRect();
+    const boardRect = game.board.getBoundingClientRect();
+    const x = cardRect.left - boardRect.left + (CARD_W - 160) / 2;
+    let y = cardRect.top - boardRect.top - 74;
+    if (y < 4) y = cardRect.top - boardRect.top + CARD_H + 6; // 顶部放不下 → 显示在卡下方
+    _tipEl.style.left = clamp(x, 4, bs.w - 164) + "px";
+    _tipEl.style.top = clamp(y, 4, bs.h - 64) + "px";
+    game.board.appendChild(_tipEl);
+  }
+  el.addEventListener("mouseenter", show);
+  el.addEventListener("mouseleave", hideTip);
+  let hold = null;
+  el.addEventListener("touchstart", () => { hold = setTimeout(show, 300); }, { passive: true });
+  el.addEventListener("touchmove", () => { if (hold) { clearTimeout(hold); hold = null; } }, { passive: true });
+  el.addEventListener("touchend", () => { if (hold) { clearTimeout(hold); hold = null; } setTimeout(hideTip, 150); }, { passive: true });
+  el.addEventListener("touchcancel", () => { if (hold) { clearTimeout(hold); hold = null; } hideTip(); }, { passive: true });
 }
 
 // 新手卡包（常驻元素，不随 cards 循环）

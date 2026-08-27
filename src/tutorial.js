@@ -19,37 +19,39 @@ function markTutorialSeen() {
   try { localStorage.setItem(DONE_KEY, '1'); } catch (e) { }
 }
 
-// ===================== 教程步骤定义 =====================
+// ===================== 教程步骤定义（新世界观·策划新手引导表 6 步） =====================
 // check(game) 返回 true 即视为该步完成，自动进入下一步。
-// targets: 需要高亮的卡 id（'herder' 等）或 DOM 选择器（'market' / 'packBtn'）。
+// targets: 需要高亮的卡 id 或 DOM 选择器（'packBtn' 等）。
 const STEPS = [
   {
-    title: '① 拖拽堆叠 · 万物皆可叠',
-    text: '按住【牧民】，拖到下面的【蓝莓丛】上松手。这就是游戏的根本：任意两张卡叠在一起都会发生点什么（这里会采出蓝莓）。',
+    title: '① 拖牧民到树木',
+    text: '按住【牧民】拖到【树木】上松手——这就是"叠卡生产"：任何两张卡叠在一起都可能发生点什么（这里会砍出木头）。',
+    targets: ['herder', 'tree'],
+    check: (g) => (g.state.stats.totalWood || 0) > 0
+  },
+  {
+    title: '② 拖牧民到蓝莓丛',
+    text: '再把【牧民】拖到【蓝莓丛】上，采出蓝莓——这是食物的来源，每天都要喂饱牧民。',
     targets: ['herder', 'bush'],
-    check: (g) => {
-      const t = g.tutorial;
-      const ph = pileOf(g, t.herder), pb = pileOf(g, t.bush);
-      return ph && pb && ph === pb;
-    }
+    check: (g) => (g.state.cardGets['blueberry'] || 0) > 0
   },
   {
-    title: '② 喂食牧民',
-    text: '把【面包】拖到【牧民】身上喂饱他。每天结算会消耗饱食度，没食物就会饿死——这是生存底线。',
-    targets: ['bread', 'herder'],
-    check: (g) => g.tutorial.flags.feed > 0
+    title: '③ 打造木剑',
+    text: '把【牧民】+【制造厂】+【木头×2】叠在一起，打造出【木剑】——武器是保家卫牧场的关键。',
+    targets: ['herder', 'factory', 'wood'],
+    check: (g) => g.state.cardGets['sword'] > 0
   },
   {
-    title: '③ 卖牛换金币',
-    text: '把【牛】拖到右下角的【市场】里，卖出换金币。金币是打工的报酬，而牛是金币的主来源。',
-    targets: ['cow', 'market'],
-    check: (g) => g.tutorial.flags.sell > 0
+    title: '④ 给狗装备木剑',
+    text: '把【木剑】拖到【边牧】身上，攻击力 +1。有了武器，狗在夜晚才能保护牧场。',
+    targets: ['border_collie', 'sword'],
+    check: (g) => (g.state.stats.equipped || 0) > 0
   },
   {
-    title: '④ 买卡包扩充',
-    text: '点底部【卡包】打开商店，用金币买一个卡包。新卡是扩张的燃料。完成这步就毕业啦！',
+    title: '⑤ 买动物店卡包',
+    text: '点底部【卡包】→ 买一个【动物店】卡包（💰20），开始养牛、羊、猪！完成这步就毕业啦！',
     targets: ['packBtn'],
-    check: (g) => g.tutorial.flags.buy > 0
+    check: (g) => (g.tutorial.flags.buyAnimal || 0) > 0
   }
 ];
 
@@ -165,7 +167,7 @@ export function startTutorial(game) {
   st.paused = false;
   st.gameOver = false;
   st.speed = 1;
-  st.gold = 30;            // 教程启动金：足够买基础卡包(💰10)
+  st.gold = 50;            // 教程启动金：够买动物店卡包(💰20)
   // 清空当前棋盘（含新手卡包 / 弹窗），搭沙盘
   game.board.querySelectorAll('.card,.pileprog,.packobj,.overlay').forEach(el => el.remove());
   st.piles = [];
@@ -174,23 +176,35 @@ export function startTutorial(game) {
   game._openModal = null; game._openOv = null;
 
   const s = game.boardSize();
-  const topY = Math.max(8, s.h * 0.20);
-  const colL = Math.max(8, s.w * 0.28);
-  const colR = Math.max(8, s.w * 0.60);
+  const colL = Math.max(8, s.w * 0.16);
+  const colR = Math.max(8, s.w * 0.48);
+  const midX = s.w * 0.34;
+  const topY = Math.max(8, s.h * 0.24);
+  // 教学沙盘卡：生产教学（树/蓝莓丛）+ 制造木剑链（制造厂+木头）+ 装备教学（边牧）
   const herder = mk(game, 'herder'); herder.fed = foodCapOf('herder');
+  const tree = mk(game, 'tree');
   const bush = mk(game, 'bush');
-  const bread = mk(game, 'bread');
-  const cow = mk(game, 'cow');
+  const factory = mk(game, 'factory');
+  const borderCollie = mk(game, 'border_collie'); borderCollie.fed = foodCapOf('border_collie');
   const hPile = makePile(game, colL, topY, [herder]);
-  const bPile = makePile(game, colL, topY + 118, [bush]);
-  const brPile = makePile(game, colR, topY, [bread]);
-  const cPile = makePile(game, colR, topY + 118, [cow]);
+  const tPile = makePile(game, colL, topY + 150, [tree]);
+  const bPile = makePile(game, colR, topY, [bush]);
+  const fPile = makePile(game, colR, topY + 150, [factory]);
+  const wPile = makePile(game, midX, topY + 90, [mk(game, 'wood'), mk(game, 'wood'), mk(game, 'wood'), mk(game, 'wood')]);
+  const dPile = makePile(game, midX, topY + 240, [borderCollie]);
+  const extra = [mk(game, 'stone'), mk(game, 'stone'), mk(game, 'branch'), mk(game, 'branch'), mk(game, 'flint')];
+  extra.forEach((c, i) => makePile(game, midX + (i % 3) * 90, topY + 320 + Math.floor(i / 3) * 90, [c]));
 
   const tut = {
-    step: 0, herder, bush, bread, cow,
-    hPile, bPile, brPile, cPile,
+    step: 0, herder, tree, bush, factory, borderCollie,
+    hPile, tPile, bPile, fPile, wPile, dPile,
     flags: {}, _advanced: false, _poll: null,
-    notify(type) { this.flags[type] = (this.flags[type] || 0) + 1; checkStep(game); }
+    notify(type, payload) {
+      // 买动物店卡包才算完成第 5 步
+      if (type === 'buy' && payload && payload.id === 'animal') this.flags.buyAnimal = (this.flags.buyAnimal || 0) + 1;
+      else this.flags[type] = (this.flags[type] || 0) + 1;
+      checkStep(game);
+    }
   };
   game.tutorial = tut;
 

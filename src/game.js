@@ -3,12 +3,12 @@
 import { createState, makePile, removePile, mk, scatter } from './state.js';
 import { render, updateHUD, toast, renderPack, bindTaskCheck } from './render.js';
 import { bindDrag } from './drag.js';
-import { tick, loadGame, saveGame, checkTasks, loadDestGame, deleteDestSave, loadMeta, saveMeta } from './systems.js';
-import { showShop, showTasks, showCodexBook, showHelp, showSettings, toggleModal, showChapterSelect, showLandmarkBuild } from './modals.js';
+import { tick, loadGame, saveGame, checkTasks, loadMeta } from './systems.js';
+import { showShop, showTasks, showCodexBook, showHelp, showSettings, toggleModal } from './modals.js';
 import { startTutorial, maybeShowFirstLaunch } from './tutorial.js';
-import { showHome } from './home.js';
+import { showHome, showPassport } from './home.js';
 import { bindToast } from './merge.js';
-import { TICK_MS, SAVE_KEY, SAVE_DEST_PREFIX, foodCapOf, DESTINATIONS, destById, TICKET } from './config.js';
+import { TICK_MS, SAVE_KEY, foodCapOf } from './config.js';
 import * as audio from './audio.js';
 
 export class Game {
@@ -72,9 +72,9 @@ export class Game {
     this.refs.taskBtn.onclick = () => { if (!this.state.gameOver) { audio.play("ui.click"); toggleModal(this, "tasks", () => showTasks(this)); } };
     this.refs.codexBtn.onclick = () => { audio.play("ui.click"); toggleModal(this, "codex", () => showCodexBook(this, "codex")); };
     this.refs.setBtn.onclick = () => { audio.play("ui.click"); toggleModal(this, "settings", () => showSettings(this)); };
-    // 旅行/章节选择按钮
+    // 底部「护照」按钮：旅行护照入口（内容占位）
     if (this.refs.travelBtn) {
-      this.refs.travelBtn.onclick = () => { audio.play("ui.click"); toggleModal(this, "travel", () => showChapterSelect(this)); };
+      this.refs.travelBtn.onclick = () => { audio.play("ui.click"); toggleModal(this, "passport", () => showPassport(this)); };
     }
     // 空格键：暂停/继续（输入框聚焦时不触发）
     window.addEventListener("keydown", (e) => {
@@ -87,22 +87,16 @@ export class Game {
     });
     window.addEventListener("beforeunload", () => saveGame(this));
 
-    // 开局：优先加载上次目的地的独立存档，否则进入章节选择
-    const meta = loadMeta();
+    // 开局：单主界面——优先恢复单存档，否则新档；总是先到品牌首页（主菜单）
     let loaded = false;
-    if (meta.lastDest && localStorage.getItem(SAVE_DEST_PREFIX + meta.lastDest)) {
-      loaded = loadDestGame(this, meta.lastDest);
-      if (loaded && this.state.phase === "night") this.app.classList.add("night");
-    }
-    if (!loaded && localStorage.getItem(SAVE_KEY)) {
-      // 兼容旧版单存档
+    if (localStorage.getItem(SAVE_KEY)) {
       loaded = loadGame(this);
       if (loaded && this.state.phase === "night") this.app.classList.add("night");
     }
     // 首页：打开游戏总是先到品牌首页（主菜单）；无存档首次启动叠加教程引导
     showHome(this);
     if (!loaded) maybeShowFirstLaunch(this);
-    // 注意：有存档时棋盘已恢复在首页背后，点「继续旅程」→ continueDestination 重新加载
+    // 注意：有存档时棋盘已恢复在首页背后，点「继续经营」→ continueGame 重新加载
     // 卡包元素常驻：如被意外移除则补回
     setInterval(() => {
       if (this.state.paused || this.state.gameOver) return;
@@ -117,10 +111,16 @@ export class Game {
     setInterval(() => tick(this), TICK_MS);
   }
 
+  // 新手礼包（对齐策划「新手引导」表）：牧民2、边牧1、金币30、树木1、岩石1、蓝莓丛1、木头1、石头1
   newGame() {
     const s = this.boardSize();
+    this.board.querySelectorAll(".card, .pileprog, .packobj, .overlay").forEach(el => el.remove());
+    this.app.classList.remove("night");
+    this.state = createState();
+    this.state.gold = 30;
+    this._tickCount = 0;
     // 新手卡包（点击打开）
-    const pack = makePile(this, s.w / 2 - 36, s.h / 2 - 45, []);
+    const pack = makePile(this, s.w / 2 - 48, s.h / 2 - 60, []);
     pack.isPack = true;
     pack.el = null;
     renderPack(this, pack);
@@ -131,88 +131,51 @@ export class Game {
       const oldEl = this.board.querySelector(".packobj");
       if (oldEl) oldEl.remove();
       removePile(this, pack);
-      const cards = [mk(this, "herder"), mk(this, "tree"), mk(this, "rock"), mk(this, "bush"), mk(this, "blueberry"), mk(this, "blueberry"), mk(this, "wood"), mk(this, "stone"), mk(this, "branch")];
-      cards[0].fed = foodCapOf("herder");
+      const cards = [
+        mk(this, "herder"), mk(this, "herder"), mk(this, "border_collie"),
+        mk(this, "tree"), mk(this, "rock"), mk(this, "bush"),
+        mk(this, "wood"), mk(this, "stone")
+      ];
+      cards[0].fed = foodCapOf("herder"); cards[1].fed = foodCapOf("herder");
       scatter(this, cards);
       audio.play("ui.open");
       this.render();
       this.updateHUD();
-      this.toast("🎁 新手卡包已打开！拖牧民到资源上开始生产");
+      this.toast("🎁 新手礼包已打开！拖牧民到资源上开始生产");
     };
-    this.toast("👆 点击中间的新手卡包开始游戏");
-  }
-
-  // 重置存档：清当前目的地存档 → 回到章节选择
-  resetGame() {
-    const destId = this.state.destId;
-    if (destId) {
-      deleteDestSave(destId);
-    } else {
-      try { localStorage.removeItem(SAVE_KEY); } catch (e) { }
-    }
-    this.board.querySelectorAll(".card, .pileprog, .packobj, .overlay").forEach(el => el.remove());
-    this.app.classList.remove("night");
-    this.state = createState();
-    this._tickCount = 0;
+    this.toast("👆 点击中间的新手礼包开始游戏");
     this.updateHUD();
     this.render();
-    showChapterSelect(this);
-    this.toast("🔄 已重置，选择新的目的地出发");
-  }
-
-  // 开始一个新目的地旅程
-  startDestination(destId) {
-    const dest = destById(destId);
-    if (!dest) return;
-    // 清空棋盘
-    this.board.querySelectorAll(".card, .pileprog, .packobj, .overlay").forEach(el => el.remove());
-    this.app.classList.remove("night");
-    // 重建状态
-    this.state = createState();
-    this.state.destId = destId;
-    this.state.gold = dest.startTickets;
-    this.state.packOpened = true; // 跳过新手卡包，直接开始
-    this._tickCount = 0;
-    // 发放初始卡牌（通用打工引擎）
-    const cards = [
-      mk(this, "herder"), mk(this, "tree"), mk(this, "rock"),
-      mk(this, "bush"), mk(this, "blueberry"), mk(this, "blueberry"),
-      mk(this, "wood"), mk(this, "stone"), mk(this, "branch")
-    ];
-    cards[0].fed = foodCapOf("herder");
-    // 发放目的地专属 starter 卡
-    dest.starter.forEach(t => cards.push(mk(this, t)));
-    // 发放工地卡（地标建造入口）
-    cards.push(mk(this, dest.siteType));
-    scatter(this, cards);
-    // 更新 meta
-    const meta = loadMeta();
-    meta.lastDest = destId;
-    saveMeta(meta);
-    this.updateHUD();
-    this.render();
-    this.toast("🧳 出发！" + dest.emoji + " " + dest.name + " · 攒" + TICKET + "建" + dest.landmark.emoji + dest.landmark.name);
     saveGame(this);
   }
 
-  // 继续一个目的地的存档
-  continueDestination(destId) {
+  // 重置存档：清档 → 回首页主菜单
+  resetGame() {
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) { }
     this.board.querySelectorAll(".card, .pileprog, .packobj, .overlay").forEach(el => el.remove());
     this.app.classList.remove("night");
     this.state = createState();
     this._tickCount = 0;
-    if (loadDestGame(this, destId)) {
+    this.updateHUD();
+    this.render();
+    showHome(this);
+    this.toast("🔄 已重置存档");
+  }
+
+  // 继续经营：恢复单存档（首页主 CTA 有存档时调用）
+  continueGame() {
+    this.board.querySelectorAll(".card, .pileprog, .packobj, .overlay").forEach(el => el.remove());
+    this.app.classList.remove("night");
+    this.state = createState();
+    this._tickCount = 0;
+    if (loadGame(this)) {
       if (this.state.phase === "night") this.app.classList.add("night");
-      const meta = loadMeta();
-      meta.lastDest = destId;
-      saveMeta(meta);
       this.updateHUD();
       this.render();
-      const dest = destById(destId);
-      this.toast("📍 继续旅程：" + (dest ? dest.name : destId));
+      this.toast("📍 欢迎回来，继续经营牧场");
     } else {
-      // 存档损坏 → 重新开始
-      this.startDestination(destId);
+      // 存档损坏 → 开新档
+      this.newGame();
     }
   }
 }

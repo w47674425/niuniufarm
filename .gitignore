@@ -6,4 +6,9 @@ dist/
 resource/
 vite.config.js.timestamp-*.mjs
 .tutbuild/
+# CDP 真机验证产生的浏览器 profile 与运行日志（非源码）
+.cdp_profile/
+.cdp_profile2/
+.cdp_t3/
+*.log
 

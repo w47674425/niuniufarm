@@ -27,8 +27,6 @@ const refs = {
   packBtn: document.getElementById('packBtn'),
   taskBtn: document.getElementById('taskBtn'),
   codexBtn: document.getElementById('codexBtn'),
-  goalStat: document.getElementById('goalStat'),
-  moraleStat: document.getElementById('moraleStat'),
   travelBtn: document.getElementById('travelBtn'),
   setBtn: document.getElementById('setBtn')
 };

@@ -3,30 +3,17 @@
 // ===================== 全局配置 =====================
 export const DAY_LEN   = 90;     // 一个完整昼夜的秒数
 export const DAY_FRAC  = 0.6;    // 白天占比例，其余为夜晚
-export const CARD_W = 72, CARD_H = 90, STACK_OFF = 22;
+export const CARD_W = 96, CARD_H = 120, STACK_OFF = 28;   // 横屏 1920×1080 基准放大
 export const TICK_MS = 500;      // 主循环步长
 export const MON_SPEED = 14;     // 怪物每 TICK 移动像素
 export const ENGAGE_DIST = 64;   // 怪物与防御者交战距离
 export const MAX_STACK = 16;     // 单堆基础上限（有仓库时提高到 32）
 export const COMBAT_SEC = 2;     // 战斗伤害结算间隔(秒)
 export const SAVE_KEY = "niuniu_ranch_save_v1";
-export const SAVE_DEST_PREFIX = "niuniu_dest_";   // 每目的地独立存档槽前缀
-export const META_KEY = "niuniu_meta_v1";          // 全局 Meta 槽（护照章 / 解锁）
+export const META_KEY = "niuniu_meta_v1";          // 全局 Meta 槽（护照章 / 成就占位）
 // 货币：内部字段仍是 gold，仅 UI 显示（当前为金币）
 export const TICKET = "💰";     // 货币图标
 export const MONEY_NAME = "金币";
-
-// ===================== 精神系统常量（§4.6 · 方案2标准平衡 2026-08-27 用户选定，见 design/精神数值方案选择.md） =====================
-// 模拟达标（spirit_plans.mjs 触发式篝火模型）：纯打工危机 13min | 篝火4次/40min | 40min末精神80 | 断粮稳
-export const SPIRIT_MAX = 100;       // 工人精神上限/初始
-export const D_WORK = 1.6;           // 每次配方结算 -1.6 精神（按真实产出动作，不按拖拽）
-export const NIGHT_DRAIN_MULT = 2;   // 夜班损耗 ×2（夜晚"加班诱惑"的代价）
-export const STARVE_PENALTY = 10;    // 日结算有饿跑 → 全体 -10（饥饿耦合）
-export const IDLE_REGEN = 0.25;      // 闲置休息 +0.25/s
-export const LEISURE_REGEN = 1.5;    // 篝火旁休息 +1.5/s
-export const MORALE_HIGH = 70;       // 士气 ≥70 → 配方耗时 ×0.9（快 10%）
-export const MORALE_LOW = 40;        // 士气 <40 → 配方耗时 ×1.25 线性升到 ×2（慢 50%）
-export const LANDMARK_BOOST = 30;    // 地标落成 → 全队 +30 精神
 
 // ===================== 卡牌数据 =====================
 // cat: unit / node / res / food / item / build / life / mon
@@ -39,19 +26,27 @@ export const META = {
   // —— 单位 ——
   herder:{cat:"unit", emoji:"🧑‍🌾", label:"牧民", atk:1, hp:5, sale:0, diet:"blueberry", foodCap:5},
   dog:   {cat:"unit", emoji:"🐕", label:"牧羊犬", atk:4, hp:15, sale:0, diet:"rawmeat", foodCap:8},
+  // —— 5 种牧羊犬（宠物店随机出，属性见策划「属性点」表；DOG_ALIAS 归入 dog 家族）——
+  border_collie:  {cat:"unit", emoji:"🐕", label:"边牧", atk:4, hp:6, sale:0, diet:"rawmeat", foodCap:5},
+  golden:         {cat:"unit", emoji:"🦮", label:"金毛", atk:6, hp:4, sale:0, diet:"rawmeat", foodCap:5},
+  husky:          {cat:"unit", emoji:"🐺", label:"哈士奇", atk:8, hp:2, sale:0, diet:"rawmeat", foodCap:5},
+  german_shepherd:{cat:"unit", emoji:"🐕‍🦺", label:"德牧", atk:6, hp:4, sale:0, diet:"rawmeat", foodCap:5},
+  corgi:          {cat:"unit", emoji:"🐶", label:"柯基", atk:2, hp:8, sale:0, diet:"rawmeat", foodCap:5},
 // —— 资源点（牧民叠上去按配方产出，每次采集消耗 1 次，归零即消失）——
 // charges: 采集次数（2026-08-19 经济修复 P0：限制无限产出通胀；树/岩/莓 5 次、矿 8 次 [PLACEHOLDER·待 playtest]）
-tree:     {cat:"node", emoji:"🌳", label:"树木", note:"牧民→木头×2 树枝×1", sale:0, charges:1},
-rock:     {cat:"node", emoji:"⛰️", label:"岩石", note:"牧民→石头×2", sale:0, charges:1},
-bush:     {cat:"node", emoji:"🌿", label:"蓝莓丛", note:"牧民→蓝莓×2", sale:0, charges:1},
-iron:     {cat:"node", emoji:"🗻", label:"铁矿脉", note:"牧民→铁矿石×2", sale:0, charges:1},
-gold:     {cat:"node", emoji:"💎", label:"金矿脉", note:"牧民→金矿石×1", sale:0, charges:1},
-herbfield:{cat:"node", emoji:"🌱", label:"药田", note:"牧民→药草", sale:0, charges:1},
-farm:     {cat:"node", emoji:"🌾", label:"麦田", note:"牧民→小麦×2（一次性）", sale:0, charges:1},
+tree:     {cat:"node", emoji:"🌳", label:"树木", note:"牧民→木头×2 树枝×1", sale:0, charges:5},
+rock:     {cat:"node", emoji:"⛰️", label:"岩石", note:"牧民→石头×2", sale:0, charges:5},
+bush:     {cat:"node", emoji:"🌿", label:"蓝莓丛", note:"牧民→蓝莓×2", sale:0, charges:5},
+iron:     {cat:"node", emoji:"🗻", label:"铁矿脉", note:"牧民→铁矿石×2", sale:0, charges:8},
+gold:     {cat:"node", emoji:"💎", label:"金矿脉", note:"牧民→金矿石×1", sale:0, charges:8},
+herbfield:{cat:"node", emoji:"🌱", label:"药田", note:"牧民→药草", sale:0, charges:5},
+farm:     {cat:"node", emoji:"🌾", label:"麦田", note:"牧民→小麦×2", sale:0, charges:5},
   // —— 资源 / 材料 ——
   wood:     {cat:"res", emoji:"🪵", label:"木头", sale:2},
   branch:   {cat:"res", emoji:"🍃", label:"树枝", sale:1},
   felt:     {cat:"res", emoji:"🧶", label:"毛毡", sale:2},
+  wool:     {cat:"res", emoji:"🧵", label:"羊毛", sale:2},
+  flint:    {cat:"res", emoji:"🔪", label:"燧石", sale:2},
   stone:    {cat:"res", emoji:"🪨", label:"石头", sale:2},
   ironore:  {cat:"res", emoji:"🔩", label:"铁矿石", sale:5},
   goldore:  {cat:"res", emoji:"🟡", label:"金矿石", sale:8},
@@ -68,38 +63,37 @@ farm:     {cat:"node", emoji:"🌾", label:"麦田", note:"牧民→小麦×2（
   axe:       {cat:"item", emoji:"🪓", label:"斧头", sale:5},
   pickaxe:   {cat:"item", emoji:"⛏️", label:"镐子", sale:5},
   potion:    {cat:"item", emoji:"🧪", label:"治疗药水", sale:6, charges:2},
+  plane:     {cat:"item", emoji:"✈️", label:"飞机", note:"带上机票环游世界", sale:0},
   // —— 食物 ——
   blueberry:  {cat:"food", emoji:"🫐", label:"蓝莓", food:1, sale:1},
   bread:      {cat:"food", emoji:"🍞", label:"面包", food:3, sale:2},
   cookedmeat: {cat:"food", emoji:"🍖", label:"烤肉", food:4, sale:4},
   fruitplatter:{cat:"food", emoji:"🥗", label:"果蔬拼盘", food:3, sale:6},
+  jam:        {cat:"food", emoji:"🫙", label:"蓝莓酱", food:2, sale:4},
+  caesar:     {cat:"food", emoji:"🥗", label:"凯撒沙拉", food:5, sale:8},
   milk:       {cat:"food", emoji:"🥛", label:"牛奶", food:1, sale:2},
   rawmeat:  {cat:"food", emoji:"🥩", label:"生肉", food:1, sale:3},
-  coconutmeat:{cat:"food", emoji:"🥥", label:"椰肉", food:2, sale:2}, // 海岛特产
   // —— 建筑 ——
   house:     {cat:"build", emoji:"🏠", label:"房屋", note:"人口+繁殖", sale:0},
-  lumberyard:{cat:"build", emoji:"🪓", label:"伐木场", note:"牧民→木头×3", sale:0},
-  quarry:    {cat:"build", emoji:"⚒️", label:"采石场", note:"牧民→石头×3", sale:0},
+  lumberyard:{cat:"build", emoji:"🪓", label:"伐木场", note:"牧民→木头×6 树枝×3（每日1次）", sale:0},
+  quarry:    {cat:"build", emoji:"⚒️", label:"采石场", note:"牧民→石头×6 燧石×3（每日1次）", sale:0},
   smelter:   {cat:"build", emoji:"🔥", label:"冶炼厂", note:"冶炼铁/金锭", sale:0},
+  factory:   {cat:"build", emoji:"🏭", label:"制造厂", note:"打造武器/飞机", sale:0},
   kitchen:   {cat:"build", emoji:"🍳", label:"厨房", note:"烹饪食物", sale:0},
   warehouse: {cat:"build", emoji:"📦", label:"仓库", note:"堆叠上限↑", sale:0},
   wall:      {cat:"build", emoji:"🧱", label:"城墙", note:"建材储备", sale:0},
-  campfire:  {cat:"leisure", emoji:"🔥", label:"篝火", note:"牧民休息回精神", sale:0},
-  teahouse:  {cat:"leisure", emoji:"🍵", label:"茶馆", note:"古镇·牧民休息回精神", sale:0},
-  // —— 目的地主题资源点（阶段C，换皮复用 node 机制；美术后补）——
-  coconut:   {cat:"node", emoji:"🌴", label:"椰子树", note:"海岛·牧民→椰肉×2", sale:0, charges:1},
-  yurtsite:  {cat:"build", emoji:"🏕️", label:"蒙古包工地", note:"本章目标·点击建造", sale:0, isLandmarkSite:true},
-  lightsite: {cat:"build", emoji:"🗼", label:"灯塔工地", note:"本章目标·点击建造", sale:0, isLandmarkSite:true},
-  archsite:  {cat:"build", emoji:"🏛️", label:"牌坊工地", note:"本章目标·点击建造", sale:0, isLandmarkSite:true},
-  towersite: {cat:"build", emoji:"🗼", label:"东京塔工地", note:"本章目标·点击建造", sale:0, isLandmarkSite:true},
-  aurorasite:{cat:"build", emoji:"🌌", label:"极光站工地", note:"本章目标·点击建造", sale:0, isLandmarkSite:true},
+  // —— 旅行打卡图（飞机+机票 产出，收藏进旅行护照）——
+  photo_xinjiang: {cat:"item", emoji:"🏜️", label:"新疆打卡图", note:"已收藏进旅行护照", sale:0},
+  photo_maldives: {cat:"item", emoji:"🏝️", label:"马尔代夫打卡图", note:"已收藏进旅行护照", sale:0},
+  photo_kenya:    {cat:"item", emoji:"🦁", label:"肯尼亚打卡图", note:"已收藏进旅行护照", sale:0},
+  photo_nz:       {cat:"item", emoji:"🐑", label:"新西兰打卡图", note:"已收藏进旅行护照", sale:0},
+  photo_italy:    {cat:"item", emoji:"🍕", label:"意大利打卡图", note:"已收藏进旅行护照", sale:0},
+  photo_iceland:  {cat:"item", emoji:"❄️", label:"冰岛打卡图", note:"已收藏进旅行护照", sale:0},
   // —— 牲畜 ——
   pig:   {cat:"life", emoji:"🐷", label:"猪", note:"牧民→生肉×3", sale:15},
+  sheep: {cat:"life", emoji:"🐑", label:"羊", note:"牧民→羊毛×2（产毛）", sale:20},
   // 普通牛：动物卡包 80% 概率开出（产奶），变异牛仅 20%（见 COW_BREEDS 收藏体系）
   cow:    {cat:"life", emoji:"🐮", label:"普通牛", note:"牧民→牛奶（产奶）", sale:30, rarity:1, cowKind:"cow"},
-  // 目的地主题牛（阶段C，换皮复用 cow 机制；cowKind:"cow" 使其可挤奶）
-  wagyu:  {cat:"life", emoji:"🐂", label:"和牛", note:"东京名产·镇塔料·卖¥120", sale:120, cowKind:"cow"},
-  icecow: {cat:"life", emoji:"🦬", label:"冰原牛", note:"极寒适应·高售价", sale:90, cowKind:"cow"},
   // 变异牛 12 种（动物卡包 20% 概率开出时随机一种），稀有度影响出售价与收藏
   qixi:   {cat:"life", emoji:"🐮", label:"七夕牛", note:"普通·产奶", sale:30, rarity:1, cowKind:"cow"},
   duanwu: {cat:"life", emoji:"🐂", label:"端午牛", note:"普通·产奶", sale:30, rarity:1, cowKind:"cow"},
@@ -113,9 +107,18 @@ farm:     {cat:"node", emoji:"🌾", label:"麦田", note:"牧民→小麦×2（
   agu:    {cat:"life", emoji:"🐂", label:"A股牛", note:"传说·产奶", sale:75, rarity:4, cowKind:"cow"},
   ai:     {cat:"life", emoji:"🐃", label:"AI牛", note:"传说·产奶", sale:75, rarity:4, cowKind:"cow"},
   qiguo:  {cat:"life", emoji:"🦬", label:"奇异果牛", note:"传说·产奶", sale:75, rarity:4, cowKind:"cow"},
-  // —— 怪物（夜间刷新）——
-  thief: {cat:"mon", emoji:"🥷", label:"小偷", atk:1, hp:6, drop:8, sale:0},
-  bandit:{cat:"mon", emoji:"👹", label:"大盗", atk:4, hp:16, drop:20, sale:0}
+  // —— 怪物（夜间刷新，属性/价值对齐策划「小偷」表）——
+  thief:    {cat:"mon", emoji:"🥷", label:"小偷", atk:1, hp:3, drop:10, sale:0},
+  bandit:   {cat:"mon", emoji:"👹", label:"大盗", atk:2, hp:6, drop:20, sale:0},
+  capitalist:{cat:"mon", emoji:"🕴️", label:"资本家", atk:3, hp:12, drop:30, sale:0},
+  spy:      {cat:"mon", emoji:"🕵️", label:"间谍", atk:4, hp:20, drop:50, sale:0},
+  // —— 世界机票（机票盲盒开出；飞机+机票→打卡图，迭代3 接玩法）——
+  ticket_xinjiang: {cat:"item", emoji:"✈️🏜️", label:"新疆机票", note:"新疆 · 打卡图", sale:0},
+  ticket_maldives: {cat:"item", emoji:"✈️🏝️", label:"马尔代夫机票", note:"马尔代夫 · 打卡图", sale:0},
+  ticket_kenya:    {cat:"item", emoji:"✈️🦁", label:"肯尼亚机票", note:"肯尼亚 · 打卡图", sale:0},
+  ticket_nz:       {cat:"item", emoji:"✈️🐑", label:"新西兰机票", note:"新西兰 · 打卡图", sale:0},
+  ticket_italy:    {cat:"item", emoji:"✈️🍕", label:"意大利机票", note:"意大利 · 打卡图", sale:0},
+  ticket_iceland:  {cat:"item", emoji:"✈️❄️", label:"冰岛机票", note:"冰岛 · 打卡图", sale:0}
 };
 
 // ===================== 变异牛品种 =====================
@@ -125,62 +128,31 @@ export const COW_BREEDS = ["qixi", "duanwu", "yuandan", "taifeng", "yimou", "jin
 // 变异牛稀有度权重（普通40/稀有30/史诗20/传说10），randCowBreed 按此先选稀有度再均匀随机品种
 export const COW_WEIGHTS = [40, 30, 20, 10];
 
+// 牧羊犬品种（宠物店随机出；DOG_ALIAS 归入 "dog" 家族使装备/战斗配方通用）
+export const DOG_BREEDS = ["border_collie", "golden", "husky", "german_shepherd", "corgi"];
+
 // 卡包定义（2026-08-19 重构：基础/牧场/动物/植物/建筑）
 // 动物卡包：pool 随机抽出 count 种，各 1 张；其余卡包固定 items
+// 卡包定义（2026-08-27 迭代2：对齐策划「卡包」表 6 类）
+// pool：随机抽出 count 种各 1 张（重复项模拟策划概率）；items：固定内容
 export const PACKS = [
-  {id:"basic", name:"基础卡包", emoji:"📦", price:10,
-    desc:"蓝莓丛/树木/岩石", items:[["bush",1],["tree",1],["rock",1]]},
-  {id:"ranch", name:"牧场卡包", emoji:"🧑‍🌾", price:20,
-    desc:"牧民×1", items:[["herder",1]]},
-  {id:"animal", name:"动物卡包", emoji:"🐑", price:20,
-    desc:"猪/牛 随机出 2 个（牛随机品种）", pool:["pig","cow"], count:2},
-  {id:"plant", name:"植物卡包", emoji:"🌾", price:15, // [PLACEHOLDER·价格待确认]
-    desc:"麦田/药田", items:[["farm",1],["herbfield",1]]},
-  {id:"building", name:"建筑卡包", emoji:"🏗️", price:30,
-    desc:"铁矿脉/金矿脉", items:[["iron",1],["gold",1]]},
-  // —— 目的地专属进阶包（destOnly：仅在对应目的地时商店可见；选定目的地后解锁）——
-  {id:"island_pack", name:"海岛补给包", emoji:"🌴", price:15, destOnly:"island",
-    desc:"椰子树（采椰肉）", items:[["coconut",1]]},
-  {id:"town_pack", name:"古镇面点包", emoji:"🍜", price:15, destOnly:"town",
-    desc:"麦田/药田（面包链+药水）", items:[["farm",1],["herbfield",1]]},
-  {id:"tokyo_pack", name:"寿司料理包", emoji:"🍣", price:30, destOnly:"tokyo",
-    desc:"和牛×1（卖¥120 / 镇塔料）", items:[["wagyu",1]]},
-  {id:"iceland_pack", name:"极地工程包", emoji:"❄️", price:40, destOnly:"iceland",
-    desc:"冰原牛×1（高售价）", items:[["icecow",1]]}
+  {id:"pet", name:"宠物店", emoji:"🐕", price:20,
+    desc:"随机出一只牧羊犬（边牧/金毛/哈士奇/德牧/柯基）",
+    pool:["border_collie","golden","husky","german_shepherd","corgi"], count:1},
+  {id:"material", name:"建材店", emoji:"🪵", price:10,
+    desc:"树木×1 / 岩石×1", items:[["tree",1],["rock",1]]},
+  {id:"plant", name:"植物店", emoji:"🌾", price:15,
+    desc:"麦田×1 / 药田×1 / 蓝莓丛×1", items:[["farm",1],["herbfield",1],["bush",1]]},
+  {id:"animal", name:"动物店", emoji:"🐑", price:20,
+    desc:"牛/羊/猪 随机出一只（牛随机品种）",
+    pool:["cow","cow","cow","sheep","sheep","sheep","pig","pig","pig","pig"], count:1},
+  {id:"mine", name:"矿山", emoji:"🗻", price:30,
+    desc:"铁矿脉/金矿脉 随机出一座",
+    pool:["iron","iron","iron","iron","iron","iron","iron","iron","iron","gold"], count:1},
+  {id:"ticket", name:"机票盲盒", emoji:"✈️", price:50,
+    desc:"随机一张世界机票（新疆/马尔代夫/肯尼亚/新西兰/意大利/冰岛）",
+    pool:["ticket_xinjiang","ticket_xinjiang","ticket_xinjiang","ticket_maldives","ticket_maldives","ticket_kenya","ticket_kenya","ticket_nz","ticket_italy","ticket_iceland"], count:1}
 ];
-
-// ===================== 目的地（打工旅游章节） =====================
-// 每目的地 = 一段 20–40min 自包含旅程；解锁链按 unlock 顺序（需先达成上一档）。
-// landmark.need 仅引用现有 META 类型（保证 build 检查可跑）；starter 为开局额外主题卡。
-// startTickets = 起步金币预算（"过去的积蓄"）；landmark.tickets = 建地标所需金币（不含材料）。
-export const DESTINATIONS = [
-  { id:"grassland", name:"草原牧场", emoji:"🏞️", unlock:0, startTickets:60,
-    siteType:"yurtsite",
-    starter:["herbfield"],
-    shopPackIds:[],
-    landmark:{ id:"yurt", name:"蒙古包", emoji:"🏕️", need:{wood:8, stone:4, felt:2}, tickets:60 } },
-  { id:"island", name:"热带海岛", emoji:"🏝️", unlock:1, startTickets:100,
-    siteType:"lightsite",
-    starter:["bush","coconut"],
-    shopPackIds:["island_pack"],
-    landmark:{ id:"lighthouse", name:"灯塔", emoji:"🗼", need:{wood:10, stone:10}, tickets:120 } },
-  { id:"town", name:"古镇手艺", emoji:"🏯", unlock:2, startTickets:100,
-    siteType:"archsite",
-    starter:["farm","herbfield"],
-    shopPackIds:["town_pack"],
-    landmark:{ id:"arch", name:"古镇牌坊", emoji:"🏛️", need:{wood:12, stone:8}, tickets:120 } },
-  { id:"tokyo", name:"东京都市", emoji:"🗼", unlock:3, startTickets:160,
-    siteType:"towersite",
-    starter:["iron","wagyu"],
-    shopPackIds:["tokyo_pack"],
-    landmark:{ id:"tokyotower", name:"东京塔", emoji:"🗼", need:{ironingot:8, goldingot:4, wagyu:1}, tickets:250 } },
-  { id:"iceland", name:"冰岛极光", emoji:"🏔️", unlock:4, startTickets:240,
-    siteType:"aurorasite",
-    starter:["iron","rock","icecow"],
-    shopPackIds:["iceland_pack"],
-    landmark:{ id:"aurora", name:"极光观测站", emoji:"🌌", need:{ironingot:10, stone:10}, tickets:400 } }
-];
-export function destById(id){ return DESTINATIONS.find(d=>d.id===id) || null; }
 
 // 任务定义
 export const TASKS = [
@@ -205,61 +177,77 @@ export const TASKS = [
 //  ① 按 kind 分优先级：食用/装备(3) > 繁殖/宰杀/训练(2) > 建造/制作/冶炼/烹饪(1) > 被动生产(0)；
 //  ② 同级内取"输入卡数最多(最具体)"的配方；再同级同具体度按数组顺序。
 export const RECIPES = [
-  // —— 食用 / 药剂 / 装备（即时类，最优先）——
-  {id:"eat_blueberry", name:"食用蓝莓", in:{herder:1, blueberry:1}, out:[], sec:1, consume:true, kind:"eat", foodGain:1, label:"🫐 进食中"},
-  {id:"eat_bread", name:"食用面包", in:{herder:1, bread:1}, out:[], sec:1, consume:true, kind:"eat", foodGain:3, label:"🍞 进食中"},
-  {id:"eat_cookedmeat", name:"食用烤肉", in:{herder:1, cookedmeat:1}, out:[], sec:1, consume:true, kind:"eat", foodGain:4, hpGain:2, label:"🍖 进食中"},
-  {id:"eat_fruitplatter", name:"食用果蔬拼盘", in:{herder:1, fruitplatter:1}, out:[], sec:1, consume:true, kind:"eat", foodGain:3, label:"🥗 进食中"},
-  {id:"use_potion", name:"使用药水", in:{herder:1, potion:1}, out:[], sec:1, consume:false, kind:"potion", hpGain:5, label:"🧪 治疗中"},
-  {id:"use_potion_dog", name:"给狗用药", in:{dog:1, potion:1}, out:[], sec:1, consume:false, kind:"potion", hpGain:5, label:"🧪 治疗中"},
+  // —— 食用 / 药剂 / 装备（即时类，最优先；eat 用 unit 通用：牧民+5种狗都可吃，见属性点表）——
+  {id:"eat_blueberry", name:"食用蓝莓", in:{unit:1, blueberry:1}, out:[], sec:1, consume:true, kind:"eat", foodGain:1, label:"🫐 进食中"},
+  {id:"eat_milk", name:"喝牛奶", in:{unit:1, milk:1}, out:[], sec:1, consume:true, kind:"eat", foodGain:1, label:"🥛 喝奶中"},
+  {id:"eat_bread", name:"食用面包", in:{unit:1, bread:1}, out:[], sec:1, consume:true, kind:"eat", foodGain:3, label:"🍞 进食中"},
+  {id:"eat_cookedmeat", name:"食用烤肉", in:{unit:1, cookedmeat:1}, out:[], sec:1, consume:true, kind:"eat", foodGain:3, label:"🍖 进食中"},
+  {id:"eat_jam", name:"食用蓝莓酱", in:{unit:1, jam:1}, out:[], sec:1, consume:true, kind:"eat", foodGain:2, label:"🫙 进食中"},
+  {id:"eat_caesar", name:"食用凯撒沙拉", in:{unit:1, caesar:1}, out:[], sec:1, consume:true, kind:"eat", foodGain:5, label:"🥗 进食中"},
+  {id:"use_potion", name:"使用药水", in:{unit:1, potion:1}, out:[], sec:1, consume:false, kind:"potion", hpGain:5, label:"🧪 治疗中"},
   {id:"equip_sword", name:"狗装备木剑", in:{dog:1, sword:1}, out:[], sec:1, consume:true, kind:"equip", atk:1, label:"🗡️ 装备中"},
-  {id:"equip_ironsword", name:"狗装备铁剑", in:{dog:1, ironsword:1}, out:[], sec:1, consume:true, kind:"equip", atk:3, label:"⚔️ 装备中"},
-  {id:"equip_shield", name:"狗装备木盾", in:{dog:1, woodshield:1}, out:[], sec:1, consume:true, kind:"equip", hp:3, label:"🛡️ 装备中"},
-  {id:"equip_ironshield", name:"狗装备铁盾", in:{dog:1, ironshield:1}, out:[], sec:1, consume:true, kind:"equip", hp:6, label:"🪖 装备中"},
+  {id:"equip_ironsword", name:"狗装备铁剑", in:{dog:1, ironsword:1}, out:[], sec:1, consume:true, kind:"equip", atk:5, label:"⚔️ 装备中"},
+  {id:"equip_shield", name:"狗装备木盾", in:{dog:1, woodshield:1}, out:[], sec:1, consume:true, kind:"equip", hp:1, label:"🛡️ 装备中"},
+  {id:"equip_ironshield", name:"狗装备铁盾", in:{dog:1, ironshield:1}, out:[], sec:1, consume:true, kind:"equip", hp:5, label:"🪖 装备中"},
+  // —— 同种狗强化（属性点表：狗×2+房屋 → 保留第一只，消耗第二只，攻/血成长）——
+  {id:"boost_border_collie", name:"边牧训练", in:{border_collie:2, house:1}, out:[], sec:10, consume:true, kind:"boost", atk:2, hp:3, label:"🐕 训练中"},
+  {id:"boost_golden", name:"金毛训练", in:{golden:2, house:1}, out:[], sec:10, consume:true, kind:"boost", atk:3, hp:2, label:"🦮 训练中"},
+  {id:"boost_husky", name:"哈士奇训练", in:{husky:2, house:1}, out:[], sec:10, consume:true, kind:"boost", atk:4, hp:1, label:"🐺 训练中"},
+  {id:"boost_german_shepherd", name:"德牧训练", in:{german_shepherd:2, house:1}, out:[], sec:10, consume:true, kind:"boost", atk:3, hp:2, label:"🐕‍🦺 训练中"},
+  {id:"boost_corgi", name:"柯基训练", in:{corgi:2, house:1}, out:[], sec:10, consume:true, kind:"boost", atk:1, hp:4, label:"🐶 训练中"},
   // —— 建造（动作类，优先于手工：凑齐建材即建成建筑，而非误做手工）——
-  {id:"build_house", name:"建造房屋", in:{herder:1, wood:2, stone:1}, out:[{type:"house",n:1}], sec:15, consume:true, kind:"build", label:"🏠 建造中"},
-  {id:"build_lumberyard", name:"建造伐木场", in:{herder:1, wood:4, stone:1}, out:[{type:"lumberyard",n:1}], sec:20, consume:true, kind:"build", label:"🪓 建造中"},
-  {id:"build_quarry", name:"建造采石场", in:{herder:1, wood:2, stone:3}, out:[{type:"quarry",n:1}], sec:20, consume:true, kind:"build", label:"⚒️ 建造中"},
-  {id:"build_smelter", name:"建造冶炼厂", in:{herder:1, wood:2, stone:4}, out:[{type:"smelter",n:1}], sec:25, consume:true, kind:"build", label:"🔥 建造中"},
-  {id:"build_kitchen", name:"建造厨房", in:{herder:1, wood:2, stone:2}, out:[{type:"kitchen",n:1}], sec:18, consume:true, kind:"build", label:"🍳 建造中"},
+  // —— 建造（2026-08-27 迭代3：对齐策划「合成」表建材）——
+  {id:"build_house", name:"建造房屋", in:{herder:1, wood:3, stone:3, branch:2, felt:2}, out:[{type:"house",n:1}], sec:15, consume:true, kind:"build", label:"🏠 建造中"},
+  {id:"build_lumberyard", name:"建造伐木场", in:{herder:1, wood:5, stone:3}, out:[{type:"lumberyard",n:1}], sec:20, consume:true, kind:"build", label:"🪓 建造中"},
+  {id:"build_quarry", name:"建造采石场", in:{herder:1, wood:3, stone:5}, out:[{type:"quarry",n:1}], sec:20, consume:true, kind:"build", label:"⚒️ 建造中"},
+  {id:"build_smelter", name:"建造冶炼厂", in:{herder:1, wood:3, stone:3, branch:1, flint:2}, out:[{type:"smelter",n:1}], sec:25, consume:true, kind:"build", label:"🔥 建造中"},
+  {id:"build_factory", name:"建造制造厂", in:{herder:1, wood:3, stone:3, branch:2, flint:1}, out:[{type:"factory",n:1}], sec:28, consume:true, kind:"build", label:"🏭 建造中"},
+  {id:"build_kitchen", name:"建造厨房", in:{herder:1, wood:3, stone:3, flint:2, felt:2}, out:[{type:"kitchen",n:1}], sec:18, consume:true, kind:"build", label:"🍳 建造中"},
   {id:"build_warehouse", name:"建造仓库", in:{herder:1, wood:4, stone:2}, out:[{type:"warehouse",n:1}], sec:22, consume:true, kind:"build", label:"📦 建造中"},
   {id:"build_wall", name:"建造城墙", in:{herder:1, stone:3}, out:[{type:"wall",n:1}], sec:12, consume:true, kind:"build", label:"🧱 建造中"},
-  {id:"build_campfire", name:"搭建篝火", in:{herder:1, wood:3}, out:[{type:"campfire",n:1}], sec:8, consume:true, kind:"build", label:"🔥 搭建中"},
-  {id:"build_teahouse", name:"建茶馆", in:{herder:1, wood:3, herb:2}, out:[{type:"teahouse",n:1}], sec:12, consume:true, kind:"build", label:"🍵 建造中"},
-  // —— 制作（手工）——
-  {id:"craft_wooden_sword", name:"制作木剑", in:{herder:1, branch:2}, out:[{type:"sword",n:1}], sec:5, consume:true, kind:"craft", label:"🗡️ 制作中"},
-  {id:"craft_iron_sword", name:"制作铁剑", in:{herder:1, ironingot:1, branch:1}, out:[{type:"ironsword",n:1}], sec:10, consume:true, kind:"craft", need:"smelter", label:"⚔️ 制作中"},
-  {id:"craft_wooden_shield", name:"制作木盾", in:{herder:1, wood:3}, out:[{type:"woodshield",n:1}], sec:6, consume:true, kind:"craft", label:"🛡️ 制作中"},
-  {id:"craft_iron_shield", name:"制作铁盾", in:{herder:1, ironingot:2, wood:1}, out:[{type:"ironshield",n:1}], sec:12, consume:true, kind:"craft", need:"smelter", label:"🪖 制作中"},
-  {id:"craft_axe", name:"制作斧头", in:{herder:1, wood:1, stone:1}, out:[{type:"axe",n:1}], sec:6, consume:true, kind:"craft", label:"🪓 制作中"},
-  {id:"craft_pickaxe", name:"制作镐子", in:{herder:1, wood:1, stone:2}, out:[{type:"pickaxe",n:1}], sec:6, consume:true, kind:"craft", label:"⛏️ 制作中"},
-  {id:"craft_potion", name:"制作治疗药水", in:{herder:1, herb:3}, out:[{type:"potion",n:1}], sec:8, consume:true, kind:"craft", label:"🧪 制作中"},
-  {id:"craft_felt", name:"织毛毡", in:{herder:1, herb:2}, out:[{type:"felt",n:1}], sec:6, consume:true, kind:"craft", label:"🧶 织毛毡中"},
+  // —— 制作（手工；武器类全部需制造厂）——
+  {id:"craft_wooden_sword", name:"制作木剑", in:{herder:1, factory:1, wood:2}, out:[{type:"sword",n:1}], sec:5, consume:true, kind:"craft", label:"🗡️ 制作中"},
+  {id:"craft_iron_sword", name:"制作铁剑", in:{herder:1, factory:1, wood:2, ironingot:1}, out:[{type:"ironsword",n:1}], sec:10, consume:true, kind:"craft", label:"⚔️ 制作中"},
+  {id:"craft_wooden_shield", name:"制作木盾", in:{herder:1, factory:1, branch:2}, out:[{type:"woodshield",n:1}], sec:6, consume:true, kind:"craft", label:"🛡️ 制作中"},
+  {id:"craft_iron_shield", name:"制作铁盾", in:{herder:1, factory:1, branch:2, ironingot:1}, out:[{type:"ironshield",n:1}], sec:12, consume:true, kind:"craft", label:"🪖 制作中"},
+  {id:"craft_axe", name:"制作斧头", in:{herder:1, wood:3, stone:2}, out:[{type:"axe",n:1}], sec:6, consume:true, kind:"craft", label:"🪓 制作中"},
+  {id:"craft_pickaxe", name:"制作镐子", in:{herder:1, wood:2, stone:3}, out:[{type:"pickaxe",n:1}], sec:6, consume:true, kind:"craft", label:"⛏️ 制作中"},
+  {id:"craft_potion", name:"制作治疗药水", in:{herder:1, herb:2}, out:[{type:"potion",n:1}], sec:8, consume:true, kind:"craft", label:"🧪 制作中"},
+  {id:"craft_felt", name:"织毛毡", in:{herder:1, wool:2}, out:[{type:"felt",n:1}], sec:6, consume:true, kind:"craft", label:"🧶 织毛毡中"},
   // —— 冶炼（需冶炼厂）——
   {id:"smelt_iron", name:"冶炼铁锭", in:{herder:1, ironore:2}, out:[{type:"ironingot",n:1}], sec:10, consume:true, kind:"smelt", need:"smelter", label:"⚙️ 冶炼中"},
   {id:"smelt_gold", name:"冶炼金锭", in:{herder:1, goldore:2}, out:[{type:"goldingot",n:1}], sec:15, consume:true, kind:"smelt", need:"smelter", label:"🪙 冶炼中"},
-  // —— 烹饪（全部需厨房）——
+  // —— 烹饪（厨房）——
   {id:"mill_flour", name:"磨面粉", in:{herder:1, wheat:2}, out:[{type:"flour",n:1}], sec:5, consume:true, kind:"cook", label:"🌾 磨粉中"},
-  {id:"cook_bread", name:"烤面包", in:{herder:1, milk:1, flour:1}, out:[{type:"bread",n:1}], sec:8, consume:true, kind:"cook", need:"kitchen", label:"🍞 烘焙中"},
+  {id:"cook_bread", name:"烤面包", in:{herder:1, flour:2}, out:[{type:"bread",n:1}], sec:8, consume:true, kind:"cook", need:"kitchen", label:"🍞 烘焙中"},
   {id:"cook_meat", name:"烤肉", in:{herder:1, rawmeat:1}, out:[{type:"cookedmeat",n:1}], sec:6, consume:true, kind:"cook", need:"kitchen", label:"🍖 烤肉中"},
-  {id:"cook_platter", name:"果蔬拼盘", in:{herder:1, blueberry:3}, out:[{type:"fruitplatter",n:1}], sec:10, consume:true, kind:"cook", need:"kitchen", label:"🥗 拼盘中"},
-  // —— 宰杀 / 繁殖 / 训练 / 畜牧 ——
+  {id:"cook_jam", name:"熬蓝莓酱", in:{herder:1, blueberry:2}, out:[{type:"jam",n:1}], sec:8, consume:true, kind:"cook", need:"kitchen", label:"🫙 熬制中"},
+  {id:"cook_caesar", name:"凯撒沙拉", in:{herder:1, blueberry:1, flour:1, rawmeat:1}, out:[{type:"caesar",n:1}], sec:12, consume:true, kind:"cook", need:"kitchen", label:"🥗 拌制中"},
+  // —— 宰杀 / 繁殖 / 畜牧 ——
   {id:"slaughter_pig", name:"宰杀猪", in:{herder:1, pig:1}, out:[{type:"rawmeat",n:3}], sec:3, consume:true, kind:"slaughter", label:"🔪 宰杀中"},
-  // 牛是持续资产：牧民+任意品种牛 产奶不消耗牛（品种间配方通用，见 COW_KINDS）
+  // 牛/羊是持续资产：产奶/产毛不消耗（每日配额跟卡走）
   {id:"milk_cow", name:"挤牛奶", in:{herder:1, cow:1}, out:[{type:"milk",n:1}], sec:4, consume:false, kind:"produce", label:"🥛 挤奶中"},
+  {id:"sheep_wool", name:"剪羊毛", in:{herder:1, sheep:1}, out:[{type:"wool",n:2}], sec:4, consume:false, kind:"produce", label:"🧵 剪毛中"},
   {id:"breed_baby", name:"繁殖", in:{herder:2, house:1}, out:[{type:"herder",n:1}], sec:10, consume:true, kind:"breed", cooldown:120, label:"👶 繁殖中"},
-  // —— 建筑生产（被动，需工具：斧头/镐子，工具不消耗）——
-  {id:"prod_lumberyard", name:"伐木", in:{herder:1, lumberyard:1, axe:1}, out:[{type:"wood",n:3}], sec:6, consume:false, kind:"produce", label:"🪓 生产中"},
-  {id:"prod_quarry", name:"采石", in:{herder:1, quarry:1, pickaxe:1}, out:[{type:"stone",n:3}], sec:6, consume:false, kind:"produce", label:"⚒️ 生产中"},
-  // —— 采集（资源点，每次采集消耗 charges，归零即消失；麦田一次性）——
+  // —— 建筑生产（被动，需工具，每日一次配额）——
+  {id:"prod_lumberyard", name:"伐木", in:{herder:1, lumberyard:1, axe:1}, out:[{type:"wood",n:6},{type:"branch",n:3}], sec:6, consume:false, kind:"produce", label:"🪓 生产中"},
+  {id:"prod_quarry", name:"采石", in:{herder:1, quarry:1, pickaxe:1}, out:[{type:"stone",n:6},{type:"flint",n:3}], sec:6, consume:false, kind:"produce", label:"⚒️ 生产中"},
+  // —— 采集（资源点，每次采集消耗 charges，归零即消失）——
   {id:"gather_wood", name:"伐木", in:{herder:1, tree:1}, out:[{type:"wood",n:2},{type:"branch",n:1}], sec:8, consume:false, kind:"produce", label:"🌳 砍伐中"},
-  {id:"gather_stone", name:"采石", in:{herder:1, rock:1}, out:[{type:"stone",n:2}], sec:8, consume:false, kind:"produce", label:"⛰️ 采石中"},
+  {id:"gather_stone", name:"采石", in:{herder:1, rock:1}, out:[{type:"stone",n:2},{type:"flint",n:1}], sec:8, consume:false, kind:"produce", label:"⛰️ 采石中"},
   {id:"gather_blueberry", name:"采蓝莓", in:{herder:1, bush:1}, out:[{type:"blueberry",n:2}], sec:5, consume:false, kind:"produce", label:"🌿 采摘中"},
   {id:"gather_iron", name:"采铁矿", in:{herder:1, iron:1}, out:[{type:"ironore",n:2}], sec:12, consume:false, kind:"produce", label:"🗻 开采中"},
-  {id:"gather_gold", name:"采金矿", in:{herder:1, gold:1}, out:[{type:"goldore",n:1}], sec:15, consume:false, kind:"produce", label:"💎 开采中"},
-  {id:"gather_herb", name:"采药草", in:{herder:1, herbfield:1}, out:[{type:"herb",n:1}], sec:4, consume:false, kind:"produce", label:"🌱 采集中"},
+  {id:"gather_gold", name:"采金矿", in:{herder:1, gold:1}, out:[{type:"goldore",n:2}], sec:15, consume:false, kind:"produce", label:"💎 开采中"},
+  {id:"gather_herb", name:"采药草", in:{herder:1, herbfield:1}, out:[{type:"herb",n:2}], sec:4, consume:false, kind:"produce", label:"🌱 采集中"},
   {id:"gather_farm", name:"收割小麦", in:{herder:1, farm:1}, out:[{type:"wheat",n:2}], sec:4, consume:false, kind:"produce", label:"🌾 收割中"},
-  {id:"gather_coconut", name:"采椰子", in:{herder:1, coconut:1}, out:[{type:"coconutmeat",n:2}], sec:6, consume:false, kind:"produce", label:"🌴 采摘中"}
+  // —— 飞机链（制造厂+材料 → 飞机；飞机+机票 → 打卡图，收藏进护照）——
+  {id:"craft_plane", name:"制造飞机", in:{herder:1, factory:1, flint:5, branch:5, felt:5, ironingot:3, goldingot:2}, out:[{type:"plane",n:1}], sec:40, consume:true, kind:"craft", label:"✈️ 制造中"},
+  {id:"fly_xinjiang", name:"飞往新疆", in:{herder:1, plane:1, ticket_xinjiang:1}, out:[{type:"photo_xinjiang",n:1}], sec:5, consume:true, kind:"craft", label:"✈️ 飞行中"},
+  {id:"fly_maldives", name:"飞往马尔代夫", in:{herder:1, plane:1, ticket_maldives:1}, out:[{type:"photo_maldives",n:1}], sec:5, consume:true, kind:"craft", label:"✈️ 飞行中"},
+  {id:"fly_kenya", name:"飞往肯尼亚", in:{herder:1, plane:1, ticket_kenya:1}, out:[{type:"photo_kenya",n:1}], sec:5, consume:true, kind:"craft", label:"✈️ 飞行中"},
+  {id:"fly_nz", name:"飞往新西兰", in:{herder:1, plane:1, ticket_nz:1}, out:[{type:"photo_nz",n:1}], sec:5, consume:true, kind:"craft", label:"✈️ 飞行中"},
+  {id:"fly_italy", name:"飞往意大利", in:{herder:1, plane:1, ticket_italy:1}, out:[{type:"photo_italy",n:1}], sec:5, consume:true, kind:"craft", label:"✈️ 飞行中"},
+  {id:"fly_iceland", name:"飞往冰岛", in:{herder:1, plane:1, ticket_iceland:1}, out:[{type:"photo_iceland",n:1}], sec:5, consume:true, kind:"craft", label:"✈️ 飞行中"}
 ];
 
 // 取单位饱食度上限：META 中 foodCap 缺失时回退到 1（兜底）

@@ -1,11 +1,10 @@
 // 弹窗层：卡包商店 / 任务 / 图鉴 / 合成图鉴 / 帮助 / 设置 / 游戏结束
 
-import { META, PACKS, TASKS, RECIPES, foodCapOf, COW_BREEDS, TICKET, MONEY_NAME, DESTINATIONS, destById, LANDMARK_BOOST } from './config.js';
+import { META, PACKS, TASKS, RECIPES, foodCapOf, COW_BREEDS, DOG_BREEDS, TICKET, MONEY_NAME } from './config.js';
 import { rand } from './utils.js';
 import { mk, makePile, removeTypeN, countType } from './state.js';
 import { render, updateHUD, toast } from './render.js';
-import { buyPack, loadMeta, saveMeta, stampDest, deleteDestSave, loadDestGame } from './systems.js';
-import { landmarkMoraleBoost } from './spirit.js';
+import { buyPack, loadMeta } from './systems.js';
 import { cardArt } from './art.js';
 import { startTutorial } from './tutorial.js';
 import * as audio from './audio.js';
@@ -52,13 +51,10 @@ function openModal(game, html, opts) {
   return ov;
 }
 
-// 卡包商店：通用包全目的地可用；专属包（destOnly）仅当前目的地可见
+// 卡包商店
 export function showShop(game) {
-  const dest = game.state.destId ? destById(game.state.destId) : null;
-  const avail = PACKS.filter(pk => !pk.destOnly || (dest && pk.destOnly === dest.id));
-  let html = '<h2>🎁 卡包商店</h2><p>用' + MONEY_NAME + '购买卡包，解锁新卡牌与配方。' +
-    (dest && dest.shopPackIds && dest.shopPackIds.length ? '<br><span style="font-size:12px;color:#8a5a00;">📍 ' + dest.name + ' 专属包已解锁</span>' : '') + '</p>';
-  avail.forEach(pk => {
+  let html = '<h2>🎁 卡包商店</h2><p>用' + MONEY_NAME + '购买卡包，解锁新卡牌与配方。</p>';
+  PACKS.forEach(pk => {
     html += '<div class="shop-item"><div class="si-emoji">' + pk.emoji + '</div>' +
       '<div class="si-info"><div class="si-name">' + pk.name + '</div>' +
       '<div class="si-desc">' + pk.desc + '</div></div>' +
@@ -100,7 +96,9 @@ function codexHtml(game) {
     html += '<div class="codex-cell' + (seen ? "" : " locked") + '">' +
       (n > 0 ? '<span class="cc-count">×' + n + '</span>' : '') +
       '<div class="cc-emoji">' + (seen ? artTag(t, "cc-img") : "❓") + '</div>' +
-      '<div class="cc-name">' + (seen ? m.label : "未解锁") + '</div></div>';
+      '<div class="cc-name">' + (seen ? m.label : "未解锁") + '</div>' +
+      (seen ? '<div class="cc-sale">' + (m.sale ? TICKET + m.sale : "不可售") + '</div>' : '') +
+      '</div>';
   });
   html += '</div>';
   return html;
@@ -187,7 +185,7 @@ function fmtCards(cards) {
 const USED_BY = {};
 RECIPES.forEach(r => {
   Object.keys(r.in).forEach(k => {
-    if (k === "herder" || k === "dog") return; // 单位不是"材料"
+    if (k === "herder" || k === "dog" || DOG_BREEDS.includes(k)) return; // 单位不是"材料"
     if (!USED_BY[k]) USED_BY[k] = [];
     USED_BY[k].push(r.id);
   });
@@ -305,8 +303,6 @@ export function showHelp(game) {
     '<p><b>建造</b>：把 2🪵+1🪨 堆到牧民上 → 🏠房屋（可繁殖）；3🪨 → 🧱城墙；更多建筑见卡牌图鉴。</p>' +
     '<p><b>制作/冶炼/烹饪</b>：牧民+材料 可造 🗡️木剑/🛡️盾/⚒️工具（产物掉落在旁边，需手动拖到 🧑‍🌾牧民 身上装备）；建 🔥冶炼厂 后炼铁锭；建 🍳厨房 后烤肉做面包。全部配方见「⚗️合成」。</p>' +
     '<p><b>繁殖</b>：🏠房屋 + 2🧑‍🌾牧民 同堆 → 自动生出小牧民（房屋冷却 120 秒）。</p>' +
-    '<p><b>夜晚</b>：🌙夜幕降临后没有怪物，夜晚安宁，可安心规划产线。</p>' +
-    '<p><b>精神</b>：💚每名牧民右上角有精神值。打工消耗精神（夜班 ×2、断粮加倍）；在 🔥篝火 旁休息或闲置会恢复。精神归零会"想家离职"（可再雇）。团队士气高 → 生产更快，士气<40 → 变慢。</p>' +
     '<p><b>赚钱</b>：把可卖的卡（🪵🪨⚙️…）拖到 🏪市场 换金币，再去 🎁卡包 抽新卡。</p>' +
     '<p>进度自动存档，关掉也能离线攒钱。</p>' +
     '<button class="close" id="helpClose">知道啦</button>');
@@ -378,153 +374,6 @@ export function showSettings(game) {
 }
 
 // ===================== 章节选择（打工旅游） =====================
-export function showChapterSelect(game) {
-  const meta = loadMeta();
-  const stampedCount = DESTINATIONS.filter(d => meta.stamps[d.id]).length;
-  let html = '<h2>🗺️ 打工旅游</h2><p>选择目的地，打工攒金币，建造地标完成旅程！</p>' +
-    '<div class="passport-row">📒 旅行护照：已达成 <b>' + stampedCount + '/' + DESTINATIONS.length + '</b> 站' +
-    DESTINATIONS.map(d => '<span class="pp-stamp' + (meta.stamps[d.id] ? " got" : "") + '" title="' + d.name + '">' + (meta.stamps[d.id] ? d.emoji : "·") + '</span>').join("") +
-    '</div><div class="dest-list">';
-  DESTINATIONS.forEach(d => {
-    const unlocked = meta.unlocked.includes(d.id);
-    const hasSave = !!localStorage.getItem("niuniu_dest_" + d.id);
-    const stamped = !!meta.stamps[d.id];
-    let statusHtml = "";
-    if (!unlocked) {
-      statusHtml = '<div class="dest-status locked">🔒 未解锁</div>';
-    } else if (stamped && !hasSave) {
-      statusHtml = '<div class="dest-status done">✅ 已达成</div>';
-    } else if (hasSave) {
-      statusHtml = '<div class="dest-status active">📍 进行中</div>';
-    } else {
-      statusHtml = '<div class="dest-status new">🆕 可出发</div>';
-    }
-    html += '<div class="dest-item' + (unlocked ? "" : " locked") + '">' +
-      '<div class="dest-emoji">' + d.emoji + '</div>' +
-      '<div class="dest-info">' +
-        '<div class="dest-name">' + d.name + (stamped ? ' 📛' : '') + '</div>' +
-        '<div class="dest-landmark">' + d.landmark.emoji + ' ' + d.landmark.name + ' · ' + TICKET + d.landmark.tickets + '</div>' +
-        statusHtml +
-      '</div>' +
-      '<div class="dest-actions">';
-    if (unlocked) {
-      if (hasSave) {
-        html += '<button class="btn sm" data-act="continue" data-dest="' + d.id + '">继续</button>';
-        html += '<button class="btn sm alt" data-act="restart" data-dest="' + d.id + '">重启</button>';
-      } else {
-        html += '<button class="btn sm" data-act="new" data-dest="' + d.id + '">' + (stamped ? '重玩' : '出发') + '</button>';
-      }
-    } else {
-      html += '<span class="dest-lock">🔒</span>';
-    }
-    html += '</div></div>';
-  });
-  html += '</div><button class="close" id="destClose">关闭</button>';
-  const ov = openModal(game, html);
-  ov.querySelectorAll("[data-act]").forEach(b => {
-    b.onclick = function () {
-      const act = b.getAttribute("data-act");
-      const destId = b.getAttribute("data-dest");
-      closeModal(game, ov);
-      if (act === "continue") {
-        game.continueDestination(destId);
-      } else {
-        // new / restart 都重新开始
-        deleteDestSave(destId);
-        game.startDestination(destId);
-      }
-    };
-  });
-  document.getElementById("destClose").onclick = function () { closeModal(game, ov); };
-  return ov;
-}
-
-// ===================== 地标建造弹窗 =====================
-export function showLandmarkBuild(game, sitePile) {
-  const dest = destById(game.state.destId);
-  if (!dest) return;
-  const lm = dest.landmark;
-  const st = game.state;
-  // 检查材料是否充足
-  let canBuild = st.gold >= lm.tickets;
-  const needRows = Object.keys(lm.need).map(type => {
-    const have = countType(game, type);
-    const need = lm.need[type];
-    const ok = have >= need;
-    if (!ok) canBuild = false;
-    return '<div class="lm-row' + (ok ? " ok" : " lack") + '">' +
-      '<span class="lm-icon">' + (META[type] ? META[type].emoji : "❓") + '</span>' +
-      '<span class="lm-name">' + (META[type] ? META[type].label : type) + '</span>' +
-      '<span class="lm-count">' + have + '/' + need + '</span></div>';
-  }).join("");
-  const ticketOk = st.gold >= lm.tickets;
-  if (!ticketOk) canBuild = false;
-  let html = '<h2>' + lm.emoji + ' 建造「' + lm.name + '」</h2>';
-  html += '<p>本章目标：攒齐材料与金币，建造地标完成旅程！</p>';
-  html += '<div class="lm-materials"><h3>所需材料</h3>' + needRows + '</div>';
-  html += '<div class="lm-row' + (ticketOk ? " ok" : " lack") + '">' +
-    '<span class="lm-icon">' + TICKET + '</span>' +
-    '<span class="lm-name">' + MONEY_NAME + '</span>' +
-    '<span class="lm-count">' + st.gold + '/' + lm.tickets + '</span></div>';
-  html += '<div class="row">';
-  html += '<button class="btn" id="lmBuild"' + (canBuild ? "" : " disabled") + '>🏗️ 建造</button>';
-  html += '<button class="close" id="lmClose">关闭</button>';
-  html += '</div>';
-  const ov = openModal(game, html);
-  document.getElementById("lmClose").onclick = function () { closeModal(game, ov); };
-  if (canBuild) {
-    document.getElementById("lmBuild").onclick = function () {
-      // 消耗材料
-      Object.keys(lm.need).forEach(type => {
-        removeTypeN(game, type, lm.need[type]);
-      });
-      // 消耗金币
-      st.gold -= lm.tickets;
-      st.stats.gold = st.gold;
-      // 移除工地堆
-      const idx = st.piles.indexOf(sitePile);
-      if (idx >= 0) st.piles.splice(idx, 1);
-      // 标记建成
-      st.landmarkBuilt = true;
-      // 精神系统（§4.6 Sources#4 简化）：地标落成 → 全队精神大涨
-      landmarkMoraleBoost(game, LANDMARK_BOOST);
-      // 盖章 + 解锁下一档
-      stampDest(dest.id);
-      closeModal(game, ov);
-      render(game); updateHUD(game);
-      audio.play("ui.task");
-      // 显示达成弹窗
-      showLandmarkComplete(game, dest);
-    };
-  }
-  return ov;
-}
-
-// 地标达成弹窗
-function showLandmarkComplete(game, dest) {
-  const meta = loadMeta();
-  const nextDest = DESTINATIONS.find(d => d.unlock === dest.unlock + 1);
-  const ov = openModal(game,
-    '<h2>🎉 旅程达成！</h2>' +
-    '<p style="font-size:18px;text-align:center;">' + dest.emoji + ' <b>' + dest.name + '</b></p>' +
-    '<p style="text-align:center;font-size:36px;">' + dest.landmark.emoji + '</p>' +
-    '<p style="text-align:center;font-weight:800;">' + dest.landmark.name + ' 建造完成！</p>' +
-    '<p style="text-align:center;">📚 护照已盖章：' + dest.name + '</p>' +
-    (nextDest ? '<p style="text-align:center;color:#2e86de;">🔓 已解锁下一站：' + nextDest.emoji + ' ' + nextDest.name + '</p>' : '<p style="text-align:center;color:#f2b705;">🏆 你已解锁全部目的地！</p>') +
-    '<div class="row">' +
-    '<button class="btn" id="lmCont">继续游玩</button>' +
-    (nextDest ? '<button class="btn alt" id="lmNext">前往 ' + nextDest.name + '</button>' : '') +
-    '</div>');
-  document.getElementById("lmCont").onclick = function () { closeModal(game, ov); };
-  if (nextDest) {
-    document.getElementById("lmNext").onclick = function () {
-      closeModal(game, ov);
-      game.startDestination(nextDest.id);
-    };
-  }
-  return ov;
-}
-
 // 游戏结束（全员饿跑/离开）——v0.3 §4.5 去剧情化："饿死"→"饿跑离开"
 export function endGame(game) {
   game.state.gameOver = true;
