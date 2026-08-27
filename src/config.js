@@ -34,14 +34,14 @@ export const META = {
   german_shepherd:{cat:"unit", emoji:"🐕‍🦺", label:"德牧", atk:6, hp:4, sale:0, diet:"rawmeat", foodCap:5},
   corgi:          {cat:"unit", emoji:"🐶", label:"柯基", atk:2, hp:8, sale:0, diet:"rawmeat", foodCap:5},
 // —— 资源点（牧民叠上去按配方产出，每次采集消耗 1 次，归零即消失）——
-// charges: 采集次数（2026-08-19 经济修复 P0：限制无限产出通胀；树/岩/莓 5 次、矿 8 次 [PLACEHOLDER·待 playtest]）
-tree:     {cat:"node", emoji:"🌳", label:"树木", note:"牧民→木头×2 树枝×1", sale:0, charges:5},
-rock:     {cat:"node", emoji:"⛰️", label:"岩石", note:"牧民→石头×2", sale:0, charges:5},
-bush:     {cat:"node", emoji:"🌿", label:"蓝莓丛", note:"牧民→蓝莓×2", sale:0, charges:5},
-iron:     {cat:"node", emoji:"🗻", label:"铁矿脉", note:"牧民→铁矿石×2", sale:0, charges:8},
-gold:     {cat:"node", emoji:"💎", label:"金矿脉", note:"牧民→金矿石×1", sale:0, charges:8},
-herbfield:{cat:"node", emoji:"🌱", label:"药田", note:"牧民→药草", sale:0, charges:5},
-farm:     {cat:"node", emoji:"🌾", label:"麦田", note:"牧民→小麦×2", sale:0, charges:5},
+// charges: 采集次数（2026-08-27 用户拍板：全部 =1，采集一次即消失，靠建材店/植物店补充）
+tree:     {cat:"node", emoji:"🌳", label:"树木", note:"牧民→木头×2 树枝×1", sale:0, charges:1},
+rock:     {cat:"node", emoji:"⛰️", label:"岩石", note:"牧民→石头×2", sale:0, charges:1},
+bush:     {cat:"node", emoji:"🌿", label:"蓝莓丛", note:"牧民→蓝莓×2", sale:0, charges:1},
+iron:     {cat:"node", emoji:"🗻", label:"铁矿脉", note:"牧民→铁矿石×2", sale:0, charges:1},
+gold:     {cat:"node", emoji:"💎", label:"金矿脉", note:"牧民→金矿石×1", sale:0, charges:1},
+herbfield:{cat:"node", emoji:"🌱", label:"药田", note:"牧民→药草", sale:0, charges:1},
+farm:     {cat:"node", emoji:"🌾", label:"麦田", note:"牧民→小麦×2", sale:0, charges:1},
   // —— 资源 / 材料 ——
   wood:     {cat:"res", emoji:"🪵", label:"木头", sale:2},
   branch:   {cat:"res", emoji:"🍃", label:"树枝", sale:1},

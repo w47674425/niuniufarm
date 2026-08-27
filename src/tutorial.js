@@ -175,7 +175,9 @@ export function startTutorial(game) {
   st.gameOver = false;
   st.speed = 1;
   st.gold = 50;            // 教程启动金：够买动物店卡包(💰20)
-  // 清空当前棋盘（含新手卡包 / 弹窗），搭沙盘
+  // 清空所有遮罩（含首页/欢迎页/设置等 app 级 overlay——教程 UI zIndex 1700 低于首页 2000，
+  // 不清理会被首页盖住导致引导不可见、礼包点不到），再搭沙盘
+  game.app.querySelectorAll('.overlay').forEach(el => el.remove());
   game.board.querySelectorAll('.card,.pileprog,.packobj,.overlay').forEach(el => el.remove());
   st.piles = [];
   st.day = 1; st.timeLeft = 9999; st.phase = 'day';
@@ -277,7 +279,8 @@ function finishTutorial(game) {
     const pk = game.state.piles.find(p => p.isPack);
     if (pk && pk._open) pk._open();
   }
-  // 清掉可能残留的弹窗（如教程中点开的商店）
+  // 清掉可能残留的弹窗（如教程中点开的商店 / 首页等 app 级遮罩）
+  game.app.querySelectorAll('.overlay').forEach(el => el.remove());
   game.board.querySelectorAll('.overlay').forEach(el => el.remove());
   game._openModal = null; game._openOv = null;
   game.render(); game.updateHUD();
