@@ -20,6 +20,8 @@ function closeModal(game, ov) {
   if (ov && ov.parentNode) { ov.parentNode.removeChild(ov); audio.play("ui.close"); }
   // 同步清理单例弹窗记录（若关闭的是当前打开的弹窗）
   if (game && game._openOv === ov) { game._openOv = null; game._openModal = null; }
+  // 首页子面板（设置/帮助 attachApp 模式）关闭 → 回到首页，首页 overlay 保持为 _openOv
+  else if (game && game._openOv && game._openModal !== 'home') { game._openModal = 'home'; }
 }
 
 // 底部按钮 toggle：点同一按钮第二次关闭，点不同按钮先关旧弹窗
@@ -43,6 +45,26 @@ function openModal(game, html, opts) {
   game._openOv = ov;   // 单例记录：任何菜单弹窗打开时主循环冻结时间（见 tick 检查）
   function tryClose(e) {
     const onBackdrop = (opts.dismissBackdrop !== false && e.target === ov);
+    const onCloseBtn = !!(e.target.closest && e.target.closest(".close"));
+    if (onBackdrop || onCloseBtn) closeModal(game, ov);
+  }
+  ov.addEventListener("click", tryClose);
+  ov.addEventListener("pointerup", tryClose);
+  return ov;
+}
+
+// 挂到 app 的叠加面板（从首页进入的设置/帮助等子面板）：
+// 盖在首页之上（zIndex 2100），关闭只移除自己，不触碰首页 overlay（验收反馈⑬）
+function attachOverlay(game, html, className) {
+  const ov = document.createElement("div");
+  ov.className = "overlay " + (className || "");
+  ov.innerHTML = '<div class="modal">' + html + '</div>';
+  ov.style.position = "absolute";
+  ov.style.inset = "0";
+  ov.style.zIndex = "2100";
+  game.app.appendChild(ov);
+  function tryClose(e) {
+    const onBackdrop = e.target === ov;
     const onCloseBtn = !!(e.target.closest && e.target.closest(".close"));
     if (onBackdrop || onCloseBtn) closeModal(game, ov);
   }
@@ -146,8 +168,7 @@ const RECIPE_GROUPS = [
   { key: "build", label: "🏗️ 建造" },
   { key: "smelt", label: "⚙️ 冶炼" },
   { key: "slaughter", label: "🔪 宰杀" },
-  { key: "breed", label: "👶 繁殖" },
-  { key: "train", label: "🐕 训练" }
+  { key: "boost", label: "🐕 同种狗训练" }
 ];
 // 产出物 → 产出它的配方 id（用于「点击跳转到合成配方」）
 // 同一产出物可能有多个来源（如生肉=猪/牛），取第一个；跳转目标始终存在
@@ -171,6 +192,8 @@ function needLabel(r) {
 function fmtCards(cards) {
   const parts = [];
   Object.keys(cards).forEach(k => {
+    // 单位别名（unit/dog 等）不是材料，跳过不渲染（修复图鉴-合成空白崩溃）
+    if (!META[k]) return;
     const maker = OUT_MAKER[k]; // 该输入卡是否可由其他配方合成
     if (maker) {
       // 可合成的输入 → 链接，点击滚动到对应配方并高亮
@@ -185,7 +208,7 @@ function fmtCards(cards) {
 const USED_BY = {};
 RECIPES.forEach(r => {
   Object.keys(r.in).forEach(k => {
-    if (k === "herder" || k === "dog" || DOG_BREEDS.includes(k)) return; // 单位不是"材料"
+    if (k === "herder" || k === "unit" || k === "dog" || DOG_BREEDS.includes(k)) return; // 单位不是"材料"
     if (!USED_BY[k]) USED_BY[k] = [];
     USED_BY[k].push(r.id);
   });
@@ -225,7 +248,8 @@ function recipesHtml() {
       const outHtml = fmtOut(r.out);
       const need = needLabel(r);
       html += '<div class="recipe-item" id="ri-' + r.id + '">' +
-        (outHtml ? '<div class="ri-out">' + outHtml + '</div><div class="ri-arrow">←</div>' : '') +
+        // 有产物：产物 ← 输入；无产物（食用/装备/训练）：显示配方名便于理解
+        (outHtml ? '<div class="ri-out">' + outHtml + '</div><div class="ri-arrow">←</div>' : '<div class="ri-name">' + r.name + '</div>') +
         '<div class="ri-in">' + fmtCards(r.in) + '</div>' +
         (need ? '<div class="ri-need">' + need + '</div>' : '') +
         '<div class="ri-sec">' + r.sec + 's</div></div>';
@@ -287,36 +311,40 @@ export function showCodex(g) { return showCodexBook(g, "codex"); }
 export function showRecipes(g) { return showCodexBook(g, "recipes"); }
 export function showCollection(g) { return showCodexBook(g, "collect"); }
 
-// 帮助 / 玩法说明
-export function showHelp(game) {
-  const ov = openModal(game,
-    '<h2>🐮 牛牛牧场 · 玩法</h2>' +
-    '<p><b>核心</b>：把卡牌拖到一起"堆叠万物"，触发生产/建造/繁殖/战斗。</p>' +
+// 帮助 / 玩法说明（新世界观：叠卡生产/建造/飞机链/小偷，对齐策划表）
+export function showHelp(game, opts) {
+  opts = opts || {};
+  const html =
+    '<h2>🐮 牛牛农场 · 玩法</h2>' +
+    '<p><b>核心</b>：把卡牌拖到一起"堆叠合成"，触发生产 / 建造 / 制作。</p>' +
     '<p><b>怎么拖</b></p><ul>' +
     '<li>按住<b>最底</b>一张 → 整堆一起挪。</li>' +
     '<li>按住<b>中间</b>一张 → 只带走它和上面的。</li>' +
     '<li>按住<b>最顶</b>一张 → 只拆出那张。</li></ul>' +
-    '<p><b>生产</b>：把 🧑‍🌾牧民 拖到 🌳树木/⛰️岩石/🌿蓝莓丛/🗻铁矿脉/💎金矿脉/🌱药田 上 → 自动产出资源（进度条）。</p>' +
-    '<p><b>喂食</b>：把 🫐蓝莓/🍞面包/🍖烤肉/🥗拼盘 拖到 🧑‍🌾牧民 上喂饱（每天每单位消耗 1 餐，断粮会"饿跑"）。</p>' +
-    '<p><b>自动进食</b>：每天结算时，饱食不足的单位会自动吃 1 个自己偏好的食物——🧑‍🌾牧民吃 🫐蓝莓；没有偏好食物会吃任意食物，全都没有才饿跑。</p>' +
-    '<p><b>饱食上限</b>：牧民上限 10，喂食/进食受上限约束。</p>' +
-    '<p><b>建造</b>：把 2🪵+1🪨 堆到牧民上 → 🏠房屋（可繁殖）；3🪨 → 🧱城墙；更多建筑见卡牌图鉴。</p>' +
-    '<p><b>制作/冶炼/烹饪</b>：牧民+材料 可造 🗡️木剑/🛡️盾/⚒️工具（产物掉落在旁边，需手动拖到 🧑‍🌾牧民 身上装备）；建 🔥冶炼厂 后炼铁锭；建 🍳厨房 后烤肉做面包。全部配方见「⚗️合成」。</p>' +
-    '<p><b>繁殖</b>：🏠房屋 + 2🧑‍🌾牧民 同堆 → 自动生出小牧民（房屋冷却 120 秒）。</p>' +
-    '<p><b>赚钱</b>：把可卖的卡（🪵🪨⚙️…）拖到 🏪市场 换金币，再去 🎁卡包 抽新卡。</p>' +
+    '<p><b>生产</b>：把 🧑‍🌾牧民 拖到 🌳树木 / ⛰️岩石 / 🌿蓝莓丛 / 🌱药田 / 🌾麦田 / 🗻铁矿脉 / 💎金矿脉 上 → 自动产出资源（采集点采完即消失）。</p>' +
+    '<p><b>喂食</b>：把 🫐蓝莓 / 🥛牛奶 / 🍖烤肉 / 🍞面包 / 🥗凯撒沙拉 拖到 🧑‍🌾牧民 或 🐕牧羊犬 上喂饱（饱食上限 5；满格时食物不会再被消耗）。</p>' +
+    '<p><b>建造</b>（牧民+材料 自动合成）：🏠房屋=木头3+石头3+树枝2+毛毡2；🏭制造厂=木头3+石头3+树枝2+燧石1；🔥冶炼厂=木头3+石头3+树枝1+燧石2；🍳厨房=木头3+石头3+燧石2+毛毡2；伐木场=木头5+石头3；采石场=木头3+石头5。</p>' +
+    '<p><b>制作/装备</b>：制造厂可造 🗡️木剑/⚔️铁剑/🛡️盾牌；把武器拖到 🐕牧羊犬 上装备，攻击/血量提升。</p>' +
+    '<p><b>冶炼/烹饪</b>：🔥冶炼厂 把铁矿石/金矿石 炼成 铁锭/金锭；🍳厨房 做 面包/烤肉/蓝莓酱/凯撒沙拉。</p>' +
+    '<p><b>飞机链</b>：制造厂 + 燧石5+树枝5+毛毡5+铁锭3+金锭2 → ✈️飞机；飞机+机票 → 各地打卡图（收藏进旅行护照）。</p>' +
+    '<p><b>小偷</b>：夜晚小偷来袭（第 2 晚起），🐕牧羊犬自动迎击，击杀得金币。牧民无攻击力，记得养狗看家。</p>' +
+    '<p><b>赚钱</b>：把可卖的卡拖到 🏪市场 换金币，再去 🎁卡包 抽新卡（宠物店/建材店/植物店/动物店/矿山/机票盲盒）。</p>' +
     '<p>进度自动存档，关掉也能离线攒钱。</p>' +
-    '<button class="close" id="helpClose">知道啦</button>');
+    '<button class="close" id="helpClose">知道啦</button>';
+  const ov = opts.attachApp ? attachOverlay(game, html, 'help-overlay') : openModal(game, html);
   document.getElementById("helpClose").onclick = function () { closeModal(game, ov); };
   return ov;
 }
 
 // 设置
-export function showSettings(game) {
+export function showSettings(game, opts) {
+  opts = opts || {};
+  const attachApp = opts.attachApp;
   const a = audio.getAudioSettings();
   const volPct = Math.round((a.master || 0) * 100);
   const sfxChecked = a.sfxOn ? "checked" : "";
   const musicChecked = a.musicOn ? "checked" : "";
-  const ov = openModal(game,
+  const html =
     '<h2>⚙️ 设置</h2>' +
     '<p>当前进度已自动保存。</p>' +
     '<div class="set-block">' +
@@ -334,7 +362,8 @@ export function showSettings(game) {
     '<button class="btn" id="tutBtn">🎓 新手教程</button>' +
     '<button class="btn alt" id="resetBtn">🗑 重置存档</button>' +
     '<button class="close" id="closeSet">关闭</button>' +
-    '</div>');
+    '</div>';
+  const ov = attachApp ? attachOverlay(game, html, "set-overlay") : openModal(game, html);
   // 主音量滑杆
   const volRange = document.getElementById("volRange");
   const volVal = document.getElementById("volVal");
@@ -363,11 +392,11 @@ export function showSettings(game) {
     closeModal(game, ov);
     startTutorial(game);
   };
-  // 帮助入口：关闭设置 → 打开玩法帮助
+  // 帮助入口：关闭设置 → 打开玩法帮助（首页进入时同样叠加在首页之上）
   document.getElementById("helpBtn").onclick = function () {
     audio.play("ui.click");
     closeModal(game, ov);
-    toggleModal(game, "help", () => showHelp(game));
+    showHelp(game, { attachApp });
   };
   document.getElementById("closeSet").onclick = function () { closeModal(game, ov); };
   return ov;
@@ -395,6 +424,7 @@ export function endGame(game) {
     setTimeout(function () {
       const s = game.boardSize();
       const h1 = mk(game, "herder"), h2 = mk(game, "herder");
+      h1.name = "一一"; h2.name = "二二"; // 牧民命名（策划图鉴）
       h1.fed = foodCapOf("herder"); h2.fed = foodCapOf("herder"); // 复活即满饱食，避免立刻饿死
       makePile(game, rand(40, s.w - 140), rand(40, s.h - 200), [h1, h2, mk(game, "bread")]);
       game.state.gameOver = false;

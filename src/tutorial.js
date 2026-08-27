@@ -4,8 +4,8 @@
 //   2) 结束教程时优先 loadGame 还原玩家进度，无档才开新局 → 随时重看不丢档。
 //   3) 每步用「高亮目标卡 + 自动检测完成」驱动，玩家跟着拖一遍即毕业。
 
-import { mk, makePile, pileOf } from './state.js';
-import { render, updateHUD, toast } from './render.js';
+import { mk, makePile, pileOf, removePile } from './state.js';
+import { render, updateHUD, toast, renderPack } from './render.js';
 import { foodCapOf } from './config.js';
 import { loadGame } from './systems.js';
 import * as audio from './audio.js';
@@ -19,36 +19,42 @@ function markTutorialSeen() {
   try { localStorage.setItem(DONE_KEY, '1'); } catch (e) { }
 }
 
-// ===================== 教程步骤定义（新世界观·策划新手引导表 6 步） =====================
+// ===================== 教程步骤定义（新世界观·策划新手引导表：打开礼包→生产→木剑→装备→买包） =====================
 // check(game) 返回 true 即视为该步完成，自动进入下一步。
-// targets: 需要高亮的卡 id 或 DOM 选择器（'packBtn' 等）。
+// targets: 需要高亮的卡 id 或 DOM 选择器（'packobj'/'packBtn' 等）。
 const STEPS = [
   {
-    title: '① 拖牧民到树木',
+    title: '① 打开新手礼包',
+    text: '点击中间的新手礼包，开出你的牧场起步卡：牧民（一一、二二）、边牧、树木、蓝莓丛、木头、石头。',
+    targets: ['packobj'],
+    check: (g) => !!g.state.packOpened
+  },
+  {
+    title: '② 拖牧民到树木',
     text: '按住【牧民】拖到【树木】上松手——这就是"叠卡生产"：任何两张卡叠在一起都可能发生点什么（这里会砍出木头）。',
     targets: ['herder', 'tree'],
     check: (g) => (g.state.stats.totalWood || 0) > 0
   },
   {
-    title: '② 拖牧民到蓝莓丛',
+    title: '③ 拖牧民到蓝莓丛',
     text: '再把【牧民】拖到【蓝莓丛】上，采出蓝莓——这是食物的来源，每天都要喂饱牧民。',
     targets: ['herder', 'bush'],
     check: (g) => (g.state.cardGets['blueberry'] || 0) > 0
   },
   {
-    title: '③ 打造木剑',
+    title: '④ 打造木剑',
     text: '把【牧民】+【制造厂】+【木头×2】叠在一起，打造出【木剑】——武器是保家卫牧场的关键。',
     targets: ['herder', 'factory', 'wood'],
-    check: (g) => g.state.cardGets['sword'] > 0
+    check: (g) => (g.state.cardGets['sword'] || 0) > 0
   },
   {
-    title: '④ 给狗装备木剑',
+    title: '⑤ 给狗装备木剑',
     text: '把【木剑】拖到【边牧】身上，攻击力 +1。有了武器，狗在夜晚才能保护牧场。',
     targets: ['border_collie', 'sword'],
     check: (g) => (g.state.stats.equipped || 0) > 0
   },
   {
-    title: '⑤ 买动物店卡包',
+    title: '⑥ 买动物店卡包',
     text: '点底部【卡包】→ 买一个【动物店】卡包（💰20），开始养牛、羊、猪！完成这步就毕业啦！',
     targets: ['packBtn'],
     check: (g) => (g.tutorial.flags.buyAnimal || 0) > 0
@@ -153,6 +159,7 @@ function rectOf(game, sel) {
   let el = null;
   if (sel === 'market') el = game.marketEl;
   else if (sel === 'packBtn') el = game.refs.packBtn;
+  else if (sel === 'packobj') el = game.board.querySelector('.packobj');
   else el = game.board.querySelector('[data-id="' + sel + '"]');
   if (!el) return null;
   const r = el.getBoundingClientRect();
@@ -180,27 +187,46 @@ export function startTutorial(game) {
   const colR = Math.max(8, s.w * 0.48);
   const midX = s.w * 0.34;
   const topY = Math.max(8, s.h * 0.24);
-  // 教学沙盘卡：生产教学（树/蓝莓丛）+ 制造木剑链（制造厂+木头）+ 装备教学（边牧）
-  const herder = mk(game, 'herder'); herder.fed = foodCapOf('herder');
-  const tree = mk(game, 'tree');
-  const bush = mk(game, 'bush');
+
+  // ① 新手礼包（第 0 步：点击打开，按策划散布 8 卡，固定布局便于后续高亮）
+  const pack = makePile(game, s.w / 2 - 48, s.h / 2 - 60, []);
+  pack.isPack = true;
+  pack.el = null;
+  renderPack(game, pack);
+  pack._open = () => {
+    if (pack._done) return;
+    pack._done = true;
+    game.state.packOpened = true; // 第 0 步完成信号
+    const oldEl = game.board.querySelector('.packobj');
+    if (oldEl) oldEl.remove();
+    removePile(game, pack);
+    const h1 = mk(game, 'herder'), h2 = mk(game, 'herder');
+    h1.name = '一一'; h2.name = '二二'; // 牧民命名（策划图鉴）
+    h1.fed = foodCapOf('herder'); h2.fed = foodCapOf('herder');
+    const bc = mk(game, 'border_collie'); bc.fed = foodCapOf('border_collie');
+    // 固定布局：牧民×2 左列、资源点右列、木/狗中列（与下方教学材料呼应，高亮可定位）
+    makePile(game, colL, topY, [h1]);
+    makePile(game, colL, topY + 150, [h2]);
+    makePile(game, colL, topY + 300, [mk(game, 'tree')]);
+    makePile(game, colR, topY, [mk(game, 'bush')]);
+    makePile(game, colR, topY + 150, [mk(game, 'rock')]);
+    makePile(game, midX, topY + 90, [mk(game, 'wood'), mk(game, 'wood'), mk(game, 'wood')]); // 礼包木1 + 教学木2 = 木剑材料
+    makePile(game, midX, topY + 240, [bc]);
+    makePile(game, midX + 90, topY + 240, [mk(game, 'stone')]);
+    render(game); game.updateHUD();
+    if (game.tutorial) game.tutorial.notify('pack', pack);
+  };
+
+  // ② 教学材料：制造厂（木剑配方前置建筑）+ 额外木头
   const factory = mk(game, 'factory');
-  const borderCollie = mk(game, 'border_collie'); borderCollie.fed = foodCapOf('border_collie');
-  const hPile = makePile(game, colL, topY, [herder]);
-  const tPile = makePile(game, colL, topY + 150, [tree]);
-  const bPile = makePile(game, colR, topY, [bush]);
-  const fPile = makePile(game, colR, topY + 150, [factory]);
-  const wPile = makePile(game, midX, topY + 90, [mk(game, 'wood'), mk(game, 'wood'), mk(game, 'wood'), mk(game, 'wood')]);
-  const dPile = makePile(game, midX, topY + 240, [borderCollie]);
-  const extra = [mk(game, 'stone'), mk(game, 'stone'), mk(game, 'branch'), mk(game, 'branch'), mk(game, 'flint')];
-  extra.forEach((c, i) => makePile(game, midX + (i % 3) * 90, topY + 320 + Math.floor(i / 3) * 90, [c]));
+  const fPile = makePile(game, colR, topY + 300, [factory]);
+  const wPile = makePile(game, midX, topY + 390, [mk(game, 'wood'), mk(game, 'wood')]);
 
   const tut = {
-    step: 0, herder, tree, bush, factory, borderCollie,
-    hPile, tPile, bPile, fPile, wPile, dPile,
+    step: 0, factory, fPile, wPile,
     flags: {}, _advanced: false, _poll: null,
     notify(type, payload) {
-      // 买动物店卡包才算完成第 5 步
+      // 买动物店卡包才算完成第 6 步
       if (type === 'buy' && payload && payload.id === 'animal') this.flags.buyAnimal = (this.flags.buyAnimal || 0) + 1;
       else this.flags[type] = (this.flags[type] || 0) + 1;
       checkStep(game);
@@ -255,7 +281,7 @@ function finishTutorial(game) {
   game.board.querySelectorAll('.overlay').forEach(el => el.remove());
   game._openModal = null; game._openOv = null;
   game.render(); game.updateHUD();
-  toast(game, '🎓 教程完成！开始经营你的牛牛农场吧');
+  toast(game, '🎓 开始经营牧场吧！');
   audio.play('badge');
 }
 
@@ -268,7 +294,7 @@ export function maybeShowFirstLaunch(game) {
   ov.innerHTML =
     '<div class="modal">' +
     '  <h2>🐮 欢迎来到牛牛农场</h2>' +
-    '  <p>这是一款「拖卡叠卡」的经营生存小游戏。第一次玩，先用 <b>3 分钟</b>学 4 个基础操作？</p>' +
+    '  <p>这是一款「拖卡叠卡」的经营生存小游戏。第一次玩，先用 <b>几分钟</b>学 6 步基础操作？</p>' +
     '  <div class="row">' +
     '    <button class="btn" id="tutStart">🎓 开始教程</button>' +
     '    <button class="btn alt" id="tutSkipIntro">直接玩</button>' +

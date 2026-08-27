@@ -9,22 +9,29 @@ import { META } from './config.js';
 import * as audio from './audio.js';
 
 // 创建 overlay（全屏），挂到整个 app，并纳入弹窗单例管理
-function makeOverlay(game, className, html) {
+// zIndex：默认 2000；子面板（护照/成就/设置，从首页进入）传 2100 叠加在首页之上，
+// 且不覆盖 game._openOv（首页记录），关闭子面板后仍停留首页（验收反馈⑬）
+function makeOverlay(game, className, html, zIndex) {
   const ov = document.createElement('div');
   ov.className = 'overlay ' + className;
   ov.innerHTML = html;
   // 内联定位（优先级最高）：#app.bgimg > * 内容层规则会强制子元素 relative，必须用内联覆盖
   ov.style.position = 'absolute';
   ov.style.inset = '0';
-  ov.style.zIndex = '2000';
+  ov.style.zIndex = zIndex || '2000';
   game.app.appendChild(ov);   // 挂到 app：首页是主菜单，必须遮住整个屏幕
-  game._openOv = ov;
+  // 首页在底下时：子面板不接管单例记录（首页保持冻结）；否则正常记录
+  if (game._openOv && game._openModal === 'home') { /* 保留首页作为 _openOv */ }
+  else game._openOv = ov;
   return ov;
 }
 
 function dismiss(game, ov) {
   if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
   if (game._openOv === ov) { game._openOv = null; game._openModal = null; }
+  else if (game._openModal === 'passport' || game._openModal === 'achievements') {
+    game._openModal = 'home'; // 子面板关闭 → 回到首页（首页 overlay 仍是 _openOv，保持冻结）
+  }
 }
 
 // ===================== 品牌首页 =====================
@@ -58,9 +65,10 @@ export function showHome(game) {
     if (hasSave) game.continueGame();
     else game.newGame();
   };
-  document.getElementById('homePass').onclick = () => { audio.play('ui.click'); close(); showPassport(game); };
-  document.getElementById('homeAch').onclick = () => { audio.play('ui.click'); close(); showAchievements(game); };
-  document.getElementById('homeSet').onclick = () => { audio.play('ui.click'); close(); showSettings(game); };
+  // 护照/成就/设置：叠加在首页之上（不关闭首页），关闭后仍停留首页（验收反馈⑬）
+  document.getElementById('homePass').onclick = () => { audio.play('ui.click'); showPassport(game); };
+  document.getElementById('homeAch').onclick = () => { audio.play('ui.click'); showAchievements(game); };
+  document.getElementById('homeSet').onclick = () => { audio.play('ui.click'); showSettings(game, { attachApp: true }); };
   return ov;
 }
 
@@ -84,7 +92,7 @@ export function showPassport(game) {
     '<div class="passport-grid">' + photoHtml + '</div>' +
     '<div class="passport-sum">已打卡 <b>' + owned.length + '</b>/' + photos.length + ' 站</div>' +
     '<button class="close">关闭</button>';
-  const ov = makeOverlay(game, 'passport-overlay', '<div class="modal">' + html + '</div>');
+  const ov = makeOverlay(game, 'passport-overlay', '<div class="modal">' + html + '</div>', '2100');
   game._openModal = 'passport';
   ov.addEventListener('click', e => {
     if (e.target === ov || (e.target.closest && e.target.closest('.close'))) dismiss(game, ov);
@@ -99,7 +107,7 @@ export function showAchievements(game) {
     '<p style="text-align:center;font-size:40px;margin:8px 0;">🎖️</p>' +
     '<p>经营牧场、饲养动物、造出飞机……成就系统制作中，敬请期待。</p>' +
     '<button class="close">关闭</button>';
-  const ov = makeOverlay(game, 'ach-overlay', '<div class="modal">' + html + '</div>');
+  const ov = makeOverlay(game, 'ach-overlay', '<div class="modal">' + html + '</div>', '2100');
   game._openModal = 'achievements';
   ov.addEventListener('click', e => {
     if (e.target === ov || (e.target.closest && e.target.closest('.close'))) dismiss(game, ov);

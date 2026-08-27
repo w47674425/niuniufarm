@@ -136,6 +136,8 @@ export class Game {
         mk(this, "tree"), mk(this, "rock"), mk(this, "bush"),
         mk(this, "wood"), mk(this, "stone")
       ];
+      // 牧民命名（策划图鉴：牧民（一一）/牧民（二二））
+      cards[0].name = "一一"; cards[1].name = "二二";
       cards[0].fed = foodCapOf("herder"); cards[1].fed = foodCapOf("herder");
       scatter(this, cards);
       audio.play("ui.open");

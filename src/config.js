@@ -24,7 +24,8 @@ export const MONEY_NAME = "金币";
 // foodCap: 该单位饱食度上限（不同单位可不同，不再用全局 FOOD_CAP）
 export const META = {
   // —— 单位 ——
-  herder:{cat:"unit", emoji:"🧑‍🌾", label:"牧民", atk:1, hp:5, sale:0, diet:"blueberry", foodCap:5},
+  // 牧民（策划图鉴：牧民（一一）/牧民（二二），仅 2 名）：无攻击属性，专职生产；被怪攻击时不会反击
+  herder:{cat:"unit", emoji:"🧑‍🌾", label:"牧民", hp:5, sale:0, diet:"blueberry", foodCap:5},
   dog:   {cat:"unit", emoji:"🐕", label:"牧羊犬", atk:4, hp:15, sale:0, diet:"rawmeat", foodCap:8},
   // —— 5 种牧羊犬（宠物店随机出，属性见策划「属性点」表；DOG_ALIAS 归入 dog 家族）——
   border_collie:  {cat:"unit", emoji:"🐕", label:"边牧", atk:4, hp:6, sale:0, diet:"rawmeat", foodCap:5},
@@ -74,14 +75,12 @@ farm:     {cat:"node", emoji:"🌾", label:"麦田", note:"牧民→小麦×2", 
   milk:       {cat:"food", emoji:"🥛", label:"牛奶", food:1, sale:2},
   rawmeat:  {cat:"food", emoji:"🥩", label:"生肉", food:1, sale:3},
   // —— 建筑 ——
-  house:     {cat:"build", emoji:"🏠", label:"房屋", note:"人口+繁殖", sale:0},
+  house:     {cat:"build", emoji:"🏠", label:"房屋", note:"同种牧羊犬×2 可在此训练强化", sale:0},
   lumberyard:{cat:"build", emoji:"🪓", label:"伐木场", note:"牧民→木头×6 树枝×3（每日1次）", sale:0},
   quarry:    {cat:"build", emoji:"⚒️", label:"采石场", note:"牧民→石头×6 燧石×3（每日1次）", sale:0},
   smelter:   {cat:"build", emoji:"🔥", label:"冶炼厂", note:"冶炼铁/金锭", sale:0},
   factory:   {cat:"build", emoji:"🏭", label:"制造厂", note:"打造武器/飞机", sale:0},
   kitchen:   {cat:"build", emoji:"🍳", label:"厨房", note:"烹饪食物", sale:0},
-  warehouse: {cat:"build", emoji:"📦", label:"仓库", note:"堆叠上限↑", sale:0},
-  wall:      {cat:"build", emoji:"🧱", label:"城墙", note:"建材储备", sale:0},
   // —— 旅行打卡图（飞机+机票 产出，收藏进旅行护照）——
   photo_xinjiang: {cat:"item", emoji:"🏜️", label:"新疆打卡图", note:"已收藏进旅行护照", sale:0},
   photo_maldives: {cat:"item", emoji:"🏝️", label:"马尔代夫打卡图", note:"已收藏进旅行护照", sale:0},
@@ -154,18 +153,18 @@ export const PACKS = [
     pool:["ticket_xinjiang","ticket_xinjiang","ticket_xinjiang","ticket_maldives","ticket_maldives","ticket_kenya","ticket_kenya","ticket_nz","ticket_italy","ticket_iceland"], count:1}
 ];
 
-// 任务定义
+// 任务定义（对齐策划「任务」表 10 条；check 接收 game.state，可访问 stats 与全局状态）
 export const TASKS = [
-  {id:"t1", name:"雇佣 3 名牧民", check:function(s){return s.herders>=3;}, rew:15},
-  {id:"t2", name:"建造 1 座房屋", check:function(s){return s.houses>=1;}, rew:20},
-  {id:"t3", name:"金币达到 50", check:function(s){return s.gold>=50;}, rew:25},
-  {id:"t5", name:"产出 10 个木头", check:function(s){return s.totalWood>=10;}, rew:20},
-  {id:"t6", name:"拥有 5 名牧民", check:function(s){return s.herders>=5;}, rew:30},
-  {id:"t4", name:"招募 8 名牧民", check:function(s){return s.herders>=8;}, rew:20},
-  {id:"t7", name:"建造城墙", check:function(s){return s.walls>=1;}, rew:25},
-  {id:"t8", name:"金币达到 200", check:function(s){return s.gold>=200;}, rew:50},
-  {id:"t9", name:"建造冶炼厂", check:function(s){return s.smelters>=1;}, rew:40},
-  {id:"t10", name:"装备一件武器", check:function(s){return s.equipped>=1;}, rew:30}
+  {id:"t1", name:"打开新手礼包", check:function(s){return !!s.packOpened;}, rew:10},
+  {id:"t2", name:"获得十个木头", check:function(s){return s.stats.totalWood>=10;}, rew:10},
+  {id:"t3", name:"拥有两只牧羊犬", check:function(s){return s.stats.dogs>=2;}, rew:20},
+  {id:"t4", name:"装备一件武器", check:function(s){return s.stats.equipped>=1;}, rew:30},
+  {id:"t5", name:"建造房屋", check:function(s){return s.stats.houses>=1;}, rew:20},
+  {id:"t6", name:"建造冶炼厂", check:function(s){return s.stats.smelters>=1;}, rew:30},
+  {id:"t7", name:"采集十瓶牛奶", check:function(s){return s.stats.milkProduced>=10;}, rew:10},
+  {id:"t8", name:"建造飞机", check:function(s){return s.stats.planes>=1;}, rew:50},
+  {id:"t9", name:"首次旅行", check:function(s){return s.stats.trips>=1;}, rew:50},
+  {id:"t10", name:"成功驱逐一个小偷", check:function(s){return s.stats.kills>=1;}, rew:10}
 ];
 
 // ===================== 配方表（数据驱动） =====================
@@ -203,8 +202,6 @@ export const RECIPES = [
   {id:"build_smelter", name:"建造冶炼厂", in:{herder:1, wood:3, stone:3, branch:1, flint:2}, out:[{type:"smelter",n:1}], sec:25, consume:true, kind:"build", label:"🔥 建造中"},
   {id:"build_factory", name:"建造制造厂", in:{herder:1, wood:3, stone:3, branch:2, flint:1}, out:[{type:"factory",n:1}], sec:28, consume:true, kind:"build", label:"🏭 建造中"},
   {id:"build_kitchen", name:"建造厨房", in:{herder:1, wood:3, stone:3, flint:2, felt:2}, out:[{type:"kitchen",n:1}], sec:18, consume:true, kind:"build", label:"🍳 建造中"},
-  {id:"build_warehouse", name:"建造仓库", in:{herder:1, wood:4, stone:2}, out:[{type:"warehouse",n:1}], sec:22, consume:true, kind:"build", label:"📦 建造中"},
-  {id:"build_wall", name:"建造城墙", in:{herder:1, stone:3}, out:[{type:"wall",n:1}], sec:12, consume:true, kind:"build", label:"🧱 建造中"},
   // —— 制作（手工；武器类全部需制造厂）——
   {id:"craft_wooden_sword", name:"制作木剑", in:{herder:1, factory:1, wood:2}, out:[{type:"sword",n:1}], sec:5, consume:true, kind:"craft", label:"🗡️ 制作中"},
   {id:"craft_iron_sword", name:"制作铁剑", in:{herder:1, factory:1, wood:2, ironingot:1}, out:[{type:"ironsword",n:1}], sec:10, consume:true, kind:"craft", label:"⚔️ 制作中"},
@@ -223,12 +220,11 @@ export const RECIPES = [
   {id:"cook_meat", name:"烤肉", in:{herder:1, rawmeat:1}, out:[{type:"cookedmeat",n:1}], sec:6, consume:true, kind:"cook", need:"kitchen", label:"🍖 烤肉中"},
   {id:"cook_jam", name:"熬蓝莓酱", in:{herder:1, blueberry:2}, out:[{type:"jam",n:1}], sec:8, consume:true, kind:"cook", need:"kitchen", label:"🫙 熬制中"},
   {id:"cook_caesar", name:"凯撒沙拉", in:{herder:1, blueberry:1, flour:1, rawmeat:1}, out:[{type:"caesar",n:1}], sec:12, consume:true, kind:"cook", need:"kitchen", label:"🥗 拌制中"},
-  // —— 宰杀 / 繁殖 / 畜牧 ——
+  // —— 宰杀 / 畜牧 ——（策划合成表：无繁殖，牧民固定 2 名（一一/二二））
   {id:"slaughter_pig", name:"宰杀猪", in:{herder:1, pig:1}, out:[{type:"rawmeat",n:3}], sec:3, consume:true, kind:"slaughter", label:"🔪 宰杀中"},
   // 牛/羊是持续资产：产奶/产毛不消耗（每日配额跟卡走）
   {id:"milk_cow", name:"挤牛奶", in:{herder:1, cow:1}, out:[{type:"milk",n:1}], sec:4, consume:false, kind:"produce", label:"🥛 挤奶中"},
   {id:"sheep_wool", name:"剪羊毛", in:{herder:1, sheep:1}, out:[{type:"wool",n:2}], sec:4, consume:false, kind:"produce", label:"🧵 剪毛中"},
-  {id:"breed_baby", name:"繁殖", in:{herder:2, house:1}, out:[{type:"herder",n:1}], sec:10, consume:true, kind:"breed", cooldown:120, label:"👶 繁殖中"},
   // —— 建筑生产（被动，需工具，每日一次配额）——
   {id:"prod_lumberyard", name:"伐木", in:{herder:1, lumberyard:1, axe:1}, out:[{type:"wood",n:6},{type:"branch",n:3}], sec:6, consume:false, kind:"produce", label:"🪓 生产中"},
   {id:"prod_quarry", name:"采石", in:{herder:1, quarry:1, pickaxe:1}, out:[{type:"stone",n:6},{type:"flint",n:3}], sec:6, consume:false, kind:"produce", label:"⚒️ 生产中"},

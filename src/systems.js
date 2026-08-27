@@ -147,15 +147,13 @@ function nightMonsters(day) {
 }
 const MON_NAMES = { 0: "thief", 1: "bandit", 2: "capitalist", 3: "spy" };
 
-// 夜晚刷怪（按策划表；城墙每座减 1 怪，最少 0）
+// 夜晚刷怪（按策划刷新表）
 export function spawnMonsters(game) {
   const st = game.state;
   const herders = popCount(game);
   if (herders <= 0) return;
   const table = nightMonsters(st.day);
-  const walls = countType(game, "wall");
-  const total = Math.max(0, table.length - walls);
-  const types = table.slice(0, total).map(v => MON_NAMES[v]);
+  const types = table.map(v => MON_NAMES[v]);
   const s = game.boardSize();
   types.forEach(type => {
     const edge = Math.floor(Math.random() * 4);
@@ -342,11 +340,12 @@ export function buyPack(game, pack) {
 }
 
 // ===================== 任务 =====================
+// check 接收 game.state（含 stats），任务定义见 config.js TASKS（对齐策划「任务」表）
 export function checkTasks(game) {
   const st = game.state;
   TASKS.forEach(t => {
     if (st.tasksDone[t.id]) return;
-    if (t.check(st.stats)) {
+    if (t.check(st)) {
       st.tasksDone[t.id] = true;
       st.gold += t.rew;
       st.stats.gold = st.gold;
@@ -415,6 +414,7 @@ export function saveGame(game) {
           if (c.charges != null) o.charges = c.charges;
           if (c.atkBonus) o.atkBonus = c.atkBonus;
           if (c.hpBonus) o.hpBonus = c.hpBonus;
+          if (c.name) o.name = c.name; // 牧民名字（一一/二二）
           return o;
         })
       }))
@@ -440,6 +440,8 @@ export function loadGame(game) {
     st.tasksDone = data.tasksDone || {};
     (data.piles || []).forEach(sp => {
       const cards = (sp.cards || []).map(sc => {
+        // 旧档容错：策划精简后移除的卡（wall/warehouse 等）或未知 type 直接跳过，防止读档崩溃
+        if (!META[sc.type] || !META[sc.type].cat) return null;
         const c = mk(game, sc.type);
         if (sc.hp != null) c.hp = sc.hp;
         if (sc.fed != null) c.fed = sc.fed;
@@ -451,8 +453,10 @@ export function loadGame(game) {
         }
         if (sc.atkBonus) c.atkBonus = sc.atkBonus;
         if (sc.hpBonus) c.hpBonus = sc.hpBonus;
+        if (sc.name) c.name = sc.name; // 牧民名字（一一/二二）
         return c;
-      });
+      }).filter(c => c !== null);
+      if (cards.length === 0) return; // 整堆都是旧卡 → 跳过
       const p = makePile(game, sp.x, sp.y, cards);
       p.isPack = sp.isPack;
     });

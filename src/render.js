@@ -47,9 +47,9 @@ export function updateHUD(game) {
   // 刷新统计（任务依赖）
   st.stats.herders = popCount(game);
   st.stats.houses = countType(game, "house");
-  st.stats.walls = countType(game, "wall");
   st.stats.smelters = countType(game, "smelter");
   st.stats.gold = st.gold;
+  st.stats.dogs = allCards(game).filter(c => (c.type === "dog" || DOG_BREEDS.includes(c.type))).length;
   st.stats.equipped = allCards(game).filter(c => (c.type === "dog" || DOG_BREEDS.includes(c.type)) && (c.atkBonus || 0) > 0).length;
 }
 
@@ -117,19 +117,19 @@ export function render(game) {
         const color = pct > 60 ? "rgba(110,190,80,.5)" : (pct > 30 ? "rgba(240,190,60,.55)" : "rgba(225,90,70,.6)");
         html += '<div class="hpbg" style="height:' + pct + '%;background:' + color + '"></div>';
       }
-      html += '<div class="ce">' + artFor(c, meta) + '</div><div class="cn">' + meta.label + '</div>';
+      html += '<div class="ce">' + artFor(c, meta) + '</div><div class="cn">' + (c.name ? meta.label + '·' + c.name : meta.label) + '</div>';
       if (meta.cat === "mon") {
         const hpc = c.hp != null ? c.hp : meta.hp;
         const max = meta.hp;
         const pct = clamp(Math.round(hpc / max * 100), 0, 100);
         html += '<div class="hpbar"><div class="hpfill" style="width:' + pct + '%"></div></div>';
       }
-      // 单位直接显示属性：⚔️攻击(含加成) ❤️血量(当前/上限)
+      // 单位直接显示属性：⚔️攻击(含加成) ❤️血量(当前/上限)；牧民无攻击（策划）→ 只显示血量
       if (meta.cat === "unit") {
         const atk = (meta.atk || 0) + (c.atkBonus || 0);
         const cur = c.hp != null ? c.hp : (meta.hp || 0);
         const max2 = (meta.hp || 0) + (c.hpBonus || 0);
-        html += '<div class="cb">⚔️' + atk + ' ❤️' + cur + '/' + max2 + '</div>';
+        html += '<div class="cb">' + (atk > 0 ? '⚔️' + atk + ' ' : '') + '❤️' + cur + '/' + max2 + '</div>';
       }
       // 所有单位显示饱食度（上限取该单位自身配置）
       if (meta.cat === "unit" && c.fed != null) {

@@ -81,6 +81,13 @@ export function matchRecipe(game, p) {
       const quotaSheep = p.cards.some(c => c.type === "sheep" && (c.sheepToday || 0) < 1);
       if (!quotaSheep) continue;
     }
+    // 进食防浪费（验收反馈②）：堆内单位饱食已满时不触发吃食配方，
+    // 食物叠加到满饱单位上不会被白白消耗（等待消耗后再喂或拆开）
+    if (r.kind === "eat") {
+      const eater = p.cards.find(c => c.type === "herder") || p.cards.find(isDogCard);
+      if (!eater) continue;
+      if ((eater.fed || 0) >= foodCapOf(eater.type)) continue;
+    }
     // 伐木场/采石场每日限量 1 次（策划：产出×6+3）
     if (r.id === "prod_lumberyard" && (game.state.lumberToday || 0) >= 1) continue;
     if (r.id === "prod_quarry" && (game.state.quarryToday || 0) >= 1) continue;
@@ -149,7 +156,11 @@ function applyRecipe(game, p, r) {
   if (r.id === "milk_cow") {
     const cow = p.cards.find(c => META[c.type] && META[c.type].cowKind && (c.milkToday || 0) < 2);
     if (cow) cow.milkToday = (cow.milkToday || 0) + 1;
+    game.state.stats.milkProduced = (game.state.stats.milkProduced || 0) + 1; // 任务「采集十瓶牛奶」
   }
+  // 任务统计：造出飞机 / 首次旅行（打卡图）
+  if (r.out.some(o => o.type === "plane")) game.state.stats.planes = (game.state.stats.planes || 0) + 1;
+  if (r.id.startsWith("fly_")) game.state.stats.trips = (game.state.stats.trips || 0) + 1;
   // 剪毛计数：配额跟羊走（每只羊每天 1 次）
   if (r.id === "sheep_wool") {
     const sheep = p.cards.find(c => c.type === "sheep" && (c.sheepToday || 0) < 1);
@@ -223,18 +234,23 @@ function applyRecipe(game, p, r) {
 }
 
 // 战斗一步：防御者攻击怪物，怪物反击
+// 牧民无攻击属性（策划），只有牧羊犬能造成伤害；同回合双亡时双方都移除（验收反馈⑪）
 function fightStep(game, p) {
   const monster = p.cards.find(c => META[c.type].cat === "mon");
   const def = p.cards.find(isDogCard) || p.cards.find(c => c.type === "herder");
   if (!monster || !def) return;
   if (monster.hp == null) monster.hp = META[monster.type].hp;
   if (def.hp == null) def.hp = META[def.type].hp;
-  const defAtk = META[def.type].atk + (def.atkBonus || 0);
-  monster.hp -= defAtk;
-  def.hp -= META[monster.type].atk;
-  if (monster.hp <= 0) { killMonster(game, p, monster); }
-  else if (def.hp <= 0) { removeCardObj(game, def); toast(game, "💀 " + META[def.type].label + " 倒下了"); }
-  else { audio.play("combat.hit"); }
+  const defAtk = (META[def.type].atk || 0) + (def.atkBonus || 0);
+  const monAtk = META[monster.type].atk;
+  // 0 攻（牧民）不反击，只承受伤害
+  if (defAtk > 0) monster.hp -= defAtk;
+  def.hp -= monAtk;
+  const monDead = monster.hp <= 0;
+  const defDead = def.hp <= 0;
+  if (monDead) killMonster(game, p, monster);
+  if (defDead) { removeCardObj(game, def); toast(game, "💀 " + META[def.type].label + " 倒下了"); }
+  else if (!monDead) { audio.play("combat.hit"); }
 }
 
 function removeN(cards, type, n) {
