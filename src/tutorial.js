@@ -4,7 +4,7 @@
 //   2) 结束教程时优先 loadGame 还原玩家进度，无档才开新局 → 随时重看不丢档。
 //   3) 每步用「高亮目标卡 + 自动检测完成」驱动，玩家跟着拖一遍即毕业。
 
-import { mk, makePile, pileOf, removePile } from './state.js';
+import { mk, makePile, pileOf, removePile, createState } from './state.js';
 import { render, updateHUD, toast, renderPack } from './render.js';
 import { foodCapOf } from './config.js';
 import { loadGame } from './systems.js';
@@ -179,6 +179,8 @@ function rectOf(game, sel) {
 
 // ===================== 教程核心流程 =====================
 export function startTutorial(game) {
+  // 每次教程都用全新的 state（用户拍板：不复用玩家当前状态/进度/任务/礼包标记）
+  game.state = createState();
   const st = game.state;
   st.tutorialActive = true;
   st.paused = false;
@@ -189,7 +191,6 @@ export function startTutorial(game) {
   // 不清理会被首页盖住导致引导不可见、礼包点不到），再搭沙盘
   game.app.querySelectorAll('.overlay').forEach(el => el.remove());
   game.board.querySelectorAll('.card,.pileprog,.packobj,.overlay').forEach(el => el.remove());
-  st.piles = [];
   st.day = 1; st.timeLeft = 9999; st.phase = 'day';
   st.packOpened = false; // 教程沙盘独立管理礼包状态（第 0 步用 tutorial.packOpened 判定）
   game.app.classList.remove('night');

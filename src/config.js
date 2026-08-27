@@ -4,7 +4,7 @@
 export const DAY_LEN   = 90;     // 一个完整昼夜的秒数
 export const DAY_FRAC  = 0.6;    // 白天占比例，其余为夜晚
 export const CARD_W = 96, CARD_H = 120, STACK_OFF = 28;   // 横屏 1920×1080 基准放大
-export const TICK_MS = 500;      // 主循环步长
+export const TICK_MS = 1000 / 30;   // 主循环步长（30Hz；游戏内计时一律以秒为单位，见 tick 的 dt 换算）
 export const MON_SPEED = 14;     // 怪物每 TICK 移动像素
 export const ENGAGE_DIST = 64;   // 怪物与防御者交战距离
 export const MAX_STACK = 16;     // 单堆基础上限（有仓库时提高到 32）

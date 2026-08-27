@@ -88,15 +88,15 @@ export function tick(game) {
   // 自适应音乐状态：昼夜 + 威胁等级（夜间怪物数 /6，封顶 1）
   const monCount = st.piles.reduce((a, p) => a + p.cards.filter(c => META[c.type] && META[c.type].cat === "mon").length, 0);
   audio.setMusicState(st.phase, st.phase === "night" ? Math.min(monCount / 6, 1) : 0);
-  // 有进行中的生产/建造/战斗时每 tick 重绘，进度条持续显示并前进
+  // 有进行中的生产/建造/战斗时按 15fps 重绘（进度条平滑，避免 30Hz 每帧全量重建 DOM）
   const anyActive = st.piles.some(p => !p.isPack && p.action && p.actionSec);
-  if (anyActive) render(game);
+  if (anyActive && (game._tickCount || 0) % 2 === 0) render(game);
   // 每 tick 刷新 HUD（timer 倒计时持续走动，无动作时也不再卡住）
   updateHUD(game);
-  // 自动保存
+  // 自动保存（30Hz 下每 30 tick = 每 1 秒）
   if (game._tickCount === undefined) game._tickCount = 0;
   game._tickCount++;
-  if (game._tickCount % 10 === 0) saveGame(game);
+  if (game._tickCount % 30 === 0) saveGame(game);
 }
 
 // ===================== 昼夜切换 =====================
@@ -206,7 +206,8 @@ export function moveMonsters(game) {
       return;
     }
     const ux = dx / dist, uy = dy / dist;
-    const spd = MON_SPEED * (st.speed || 1);
+    // MON_SPEED 语义为 px/秒；乘 dt（TICK_MS/1000）换算为每帧位移，30Hz 下速度不变
+    const spd = MON_SPEED * (TICK_MS / 1000) * (st.speed || 1);
     p.x = clamp(p.x + ux * spd, 4, bs.w - CARD_W - 4);
     p.y = clamp(p.y + uy * spd, 4, bs.h - CARD_H - 4);
   });
@@ -233,7 +234,7 @@ export function moveMonsters(game) {
           return;
         }
         const ux = dx / dist, uy = dy / dist;
-        const spd = MON_SPEED * 1.15 * (st.speed || 1); // 狗略快，能追上
+        const spd = MON_SPEED * 1.15 * (TICK_MS / 1000) * (st.speed || 1); // 狗略快（px/秒），能追上
         dp.x = clamp(dp.x + ux * spd, 4, bs.w - CARD_W - 4);
         dp.y = clamp(dp.y + uy * spd, 4, bs.h - CARD_H - 4);
       });

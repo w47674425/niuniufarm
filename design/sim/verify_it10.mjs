@@ -199,6 +199,17 @@ function run() {
         const ts = JSON.parse(treeState.val || '{}');
         ok('charges=1 树采 1 次后消失(木头产出)', !ts.tree && !!ts.wood, treeState.val);
 
+        // ============ tick 30Hz 但计时按秒：timeLeft=10 → 等 2.5s → 剩余 ≈7-8s ============
+        await preloadScript(`try{localStorage.setItem('niuniu_ranch_save_v1', JSON.stringify({day:2,timeLeft:10,phase:'day',gold:50,seenCards:{},cardGets:{},collection:{},tasksDone:{},lastSave:Date.now(),piles:[{x:400,y:400,cards:[{type:'herder',hp:5,fed:5,name:'一一'}]}]}));localStorage.removeItem('niuniu_tutorial_done_v1');}catch(e){}`);
+        await evalJS(`document.getElementById('homeMain').click()`);
+        await sleep(900);
+        const t0 = await evalJS(`(document.getElementById('timer')||{}).textContent||''`);
+        await sleep(2500);
+        const t1 = await evalJS(`(document.getElementById('timer')||{}).textContent||''`);
+        const parseT = (s) => { const p = (s||'').split(':'); return p.length===2 ? parseInt(p[0],10)*60+parseInt(p[1],10) : NaN; };
+        const v0 = parseT(t0.val), v1 = parseT(t1.val);
+        ok('tick30Hz 计时按秒(2.5s 后剩余≈7-8s)', !isNaN(v0) && v1 >= 6 && v1 <= 9, 't0=' + t0.val + ' t1=' + t1.val);
+
         const realErrors = errors.filter(e => !/favicon/i.test(e));
         ok('运行期无 JS 报错(已忽略 favicon 404)', realErrors.length === 0, realErrors.slice(0, 5).join(' | '));
       } catch (e) {
