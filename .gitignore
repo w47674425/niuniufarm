@@ -12,3 +12,5 @@ vite.config.js.timestamp-*.mjs
 .cdp_t3/
 *.log
 
+.cdp_profile_assets/
+.cdp_profile_assets/

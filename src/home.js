@@ -48,8 +48,8 @@ export function showHome(game) {
         '<button class="home-main" id="homeMain">' + mainLabel + '</button>' +
       '</div>' +
       '<div class="home-row">' +
-        '<button class="home-mini" id="homePass">📒 旅行护照</button>' +
-        '<button class="home-mini" id="homeAch">🏆 成就</button>' +
+        '<button class="home-mini" id="homePass"><img src="img/ui_passport.png" alt="" />旅行护照</button>' +
+        '<button class="home-mini" id="homeAch"><img src="img/ui_achievement.png" alt="" />成就</button>' +
         '<button class="home-mini" id="homeSet">⚙️ 设置</button>' +
       '</div>' +
       '<div class="home-foot">新世界观 · 试玩版</div>' +
@@ -80,7 +80,7 @@ export function showPassport(game) {
   const photoHtml = photos.map(t => {
     const got = owned.includes(t);
     return '<div class="pp-card' + (got ? ' got' : '') + '">' +
-      '<div class="pp-emoji">' + META[t].emoji + '</div>' +
+      '<div class="pp-emoji">' + (got ? '<img src="img/' + t + '.png" alt="" />' : '🔒') + '</div>' +
       '<div class="pp-name">' + META[t].label.replace("打卡图", "") + '</div>' +
       '<div class="pp-lm">打卡图</div>' +
       '<div class="pp-st">' + (got ? '✅ 已盖章' : '🔒 未打卡') + '</div>' +
