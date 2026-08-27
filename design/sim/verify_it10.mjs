@@ -157,30 +157,36 @@ function run() {
         await evalJS(`window.__dragTo(window.__card('牧民·二二'), window.__card('蓝莓丛'))`);
         await sleep(7000); // gather_blueberry 5s
         const step3 = await evalJS(`(document.getElementById('tutTitle')||{}).textContent||'NO'`);
-        ok('第2步→第3步(打造木剑)', (step3.val || '').includes('木剑'), step3.val);
+        ok('第2步→第3步(把蓝莓喂给牧民)', (step3.val || '').includes('喂给牧民'), step3.val);
 
-        // 第 3 步：制造厂 拖到 木头堆，再牧民拖上去 → 木剑
+        // 第 3 步：蓝莓 拖到 牧民·二二（二二 fed=2，喂食有真实反馈）
+        await evalJS(`window.__dragTo(window.__card('蓝莓'), window.__card('牧民·二二'))`);
+        await sleep(1200);
+        const step4 = await evalJS(`(document.getElementById('tutTitle')||{}).textContent||'NO'`);
+        ok('第3步→第4步(打造木剑)', (step4.val || '').includes('打造木剑'), step4.val);
+
+        // 第 4 步：制造厂 拖到 木头堆，再牧民拖上去 → 木剑
         await evalJS(`window.__dragTo(window.__card('制造厂'), window.__card('木头'))`);
         await sleep(600);
         await evalJS(`window.__dragTo(window.__card('牧民·一一'), window.__card('制造厂'))`);
         await sleep(8000); // craft 5s
-        const step4 = await evalJS(`(document.getElementById('tutTitle')||{}).textContent||'NO'`);
-        ok('第3步→第4步(给狗装备木剑)', (step4.val || '').includes('装备木剑'), step4.val);
+        const step5 = await evalJS(`(document.getElementById('tutTitle')||{}).textContent||'NO'`);
+        ok('第4步→第5步(给狗装备木剑)', (step5.val || '').includes('装备木剑'), step5.val);
 
-        // 第 4 步：木剑 拖到 边牧
+        // 第 5 步：木剑 拖到 边牧
         await evalJS(`window.__dragTo(window.__card('木剑'), window.__card('边牧'))`);
         await sleep(3000); // equip 1s
-        const step5 = await evalJS(`(document.getElementById('tutTitle')||{}).textContent||'NO'`);
-        ok('第4步→第5步(买动物店卡包)', (step5.val || '').includes('动物店'), step5.val);
+        const step6 = await evalJS(`(document.getElementById('tutTitle')||{}).textContent||'NO'`);
+        ok('第5步→第6步(买动物店卡包)', (step6.val || '').includes('动物店'), step6.val);
 
-        // 第 5 步：点卡包 → 买动物店
+        // 第 6 步：点卡包 → 买动物店
         await evalJS(`document.getElementById('packBtn').click()`);
         await sleep(700);
         const buy = await evalJS(`(()=>{const b=Array.from(document.querySelectorAll('.si-buy')).find(x=>x.getAttribute('data-pack')==='animal'); if(b){b.click(); return 'OK';} return 'NO_BTN';})()`);
         await sleep(1500);
         const done = await evalJS(`JSON.stringify({tutGone:!document.querySelector('.tut'), toast:(document.getElementById('toast')||{}).textContent||''})`);
         const d = JSON.parse(done.val || '{}');
-        ok('修复 第5步买动物店后教程完成(教程UI消失)', !!d.tutGone, 'buy=' + buy.val + ' ' + done.val);
+        ok('修复 第6步买动物店后教程完成(教程UI消失)', !!d.tutGone, 'buy=' + buy.val + ' ' + done.val);
         ok('修复 教程结束语=开始经营牧场吧', (d.toast || '').includes('开始经营牧场吧'), d.toast);
 
         // ============ charges=1 验证：树采 1 次即消失（timeLeft=80 避免验证中途入夜刷小偷干扰） ============

@@ -19,43 +19,52 @@ function markTutorialSeen() {
   try { localStorage.setItem(DONE_KEY, '1'); } catch (e) { }
 }
 
-// ===================== 教程步骤定义（新世界观·策划新手引导表：打开礼包→生产→木剑→装备→买包） =====================
+// ===================== 教程步骤定义（新世界观 v2·按最新设计迭代 7 步） =====================
+// 设计依据：策划「新手引导」表（礼包→树→莓→木剑→装狗→买动物店）+ 最新设计补漏：
+//   · 采集资源点现在"采一次即消失"（charges=1，需建材店/植物店补种）→ 步骤②文案传达
+//   · 饱食/喂食是生存核心（饿跑/复活按钮），策划表漏了喂食教学 → 新增步骤④
 // check(game) 返回 true 即视为该步完成，自动进入下一步。
 // targets: 需要高亮的卡 id 或 DOM 选择器（'packobj'/'packBtn' 等）。
 const STEPS = [
   {
     title: '① 打开新手礼包',
-    text: '点击中间的新手礼包，开出你的牧场起步卡：牧民（一一、二二）、边牧、树木、蓝莓丛、木头、石头。',
+    text: '点击中间的新手礼包，开出牧场起步卡：牧民（一一、二二）、边牧、树木、蓝莓丛、木头、石头。',
     targets: ['packobj'],
     check: (g) => !!g.state.packOpened
   },
   {
     title: '② 拖牧民到树木',
-    text: '按住【牧民】拖到【树木】上松手——这就是"叠卡生产"：任何两张卡叠在一起都可能发生点什么（这里会砍出木头）。',
+    text: '按住【牧民】拖到【树木】上松手——"叠卡生产"：牧民采树得 木头×2+树枝×1。<b>树木采一次就消失</b>，记得去建材店补种。',
     targets: ['herder', 'tree'],
     check: (g) => (g.state.stats.totalWood || 0) > 0
   },
   {
     title: '③ 拖牧民到蓝莓丛',
-    text: '再把【牧民】拖到【蓝莓丛】上，采出蓝莓——这是食物的来源，每天都要喂饱牧民。',
+    text: '再拖【牧民】到【蓝莓丛】采出蓝莓——<b>食物</b>的来源。牧场里的每个人每天都要吃一餐。',
     targets: ['herder', 'bush'],
     check: (g) => (g.state.cardGets['blueberry'] || 0) > 0
   },
   {
-    title: '④ 打造木剑',
-    text: '把【牧民】+【制造厂】+【木头×2】叠在一起，打造出【木剑】——武器是保家卫牧场的关键。',
+    title: '④ 把蓝莓喂给牧民',
+    text: '把刚采的【蓝莓】拖到【牧民】身上喂饱（饱食 5/5）。<b>吃饱才有力气干活</b>，断粮会饿跑哦。',
+    targets: ['herder', 'blueberry'],
+    check: (g) => (g.tutorial.flags.feed || 0) > 0
+  },
+  {
+    title: '⑤ 打造木剑',
+    text: '把【牧民】+【制造厂】+【木头×2】叠在一起，打造出【木剑】——夜晚小偷来袭，武器是保家关键。',
     targets: ['herder', 'factory', 'wood'],
     check: (g) => (g.state.cardGets['sword'] || 0) > 0
   },
   {
-    title: '⑤ 给狗装备木剑',
-    text: '把【木剑】拖到【边牧】身上，攻击力 +1。有了武器，狗在夜晚才能保护牧场。',
+    title: '⑥ 给狗装备木剑',
+    text: '把【木剑】拖到【边牧】身上，攻击力 +1。牧民不打架，<b>夜晚全靠牧羊犬自动迎击小偷</b>。',
     targets: ['border_collie', 'sword'],
     check: (g) => (g.state.stats.equipped || 0) > 0
   },
   {
-    title: '⑥ 买动物店卡包',
-    text: '点底部【卡包】→ 买一个【动物店】卡包（💰20），开始养牛、羊、猪！完成这步就毕业啦！',
+    title: '⑦ 买动物店卡包',
+    text: '点底部【卡包】→ 买一个【动物店】（💰20）——牛产奶、羊产毛、猪出肉，是牧场经济引擎！完成就毕业啦！',
     targets: ['packBtn'],
     check: (g) => (g.tutorial.flags.buyAnimal || 0) > 0
   }
@@ -204,7 +213,8 @@ export function startTutorial(game) {
     removePile(game, pack);
     const h1 = mk(game, 'herder'), h2 = mk(game, 'herder');
     h1.name = '一一'; h2.name = '二二'; // 牧民命名（策划图鉴）
-    h1.fed = foodCapOf('herder'); h2.fed = foodCapOf('herder');
+    h1.fed = foodCapOf('herder');
+    h2.fed = 2; // 二二先饿着（2/5），步骤④喂蓝莓有真实反馈（2→3）
     const bc = mk(game, 'border_collie'); bc.fed = foodCapOf('border_collie');
     // 固定布局：牧民×2 左列、资源点右列、木/狗中列（与下方教学材料呼应，高亮可定位）
     makePile(game, colL, topY, [h1]);
@@ -228,7 +238,7 @@ export function startTutorial(game) {
     step: 0, factory, fPile, wPile,
     flags: {}, _advanced: false, _poll: null,
     notify(type, payload) {
-      // 买动物店卡包才算完成第 6 步
+      // 买动物店卡包才算完成第 7 步
       if (type === 'buy' && payload && payload.id === 'animal') this.flags.buyAnimal = (this.flags.buyAnimal || 0) + 1;
       else this.flags[type] = (this.flags[type] || 0) + 1;
       checkStep(game);
@@ -297,7 +307,7 @@ export function maybeShowFirstLaunch(game) {
   ov.innerHTML =
     '<div class="modal">' +
     '  <h2>🐮 欢迎来到牛牛农场</h2>' +
-    '  <p>这是一款「拖卡叠卡」的经营生存小游戏。第一次玩，先用 <b>几分钟</b>学 6 步基础操作？</p>' +
+    '  <p>这是一款「拖卡叠卡」的经营生存小游戏。第一次玩，先用 <b>几分钟</b>学 7 步基础操作？</p>' +
     '  <div class="row">' +
     '    <button class="btn" id="tutStart">🎓 开始教程</button>' +
     '    <button class="btn alt" id="tutSkipIntro">直接玩</button>' +
