@@ -51,6 +51,11 @@ export function updateHUD(game) {
   st.stats.gold = st.gold;
   st.stats.dogs = allCards(game).filter(c => (c.type === "dog" || DOG_BREEDS.includes(c.type))).length;
   st.stats.equipped = allCards(game).filter(c => (c.type === "dog" || DOG_BREEDS.includes(c.type)) && (c.atkBonus || 0) > 0).length;
+  // 复活按钮（市场旁）：有死亡牧民且还有活口时显示
+  if (game._reviveBtn) {
+    const show = (st.deadHerders || 0) > 0 && popCount(game) > 0 && !st.gameOver && !st.tutorialActive && !st.paused;
+    game._reviveBtn.style.display = show ? "flex" : "none";
+  }
 }
 
 export function toast(game, msg) {

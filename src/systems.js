@@ -257,6 +257,7 @@ export function onDayEnd(game) {
   });
   // 所有单位（牧民/牧羊犬）每天消耗 1 餐饱食；
   // 饱食不足的单位自动进食：优先吃自己 diet 偏好的食物，没有则吃场上任意食物，都没有才饿死
+  // 牧民不吃生肉（生肉是牧羊犬口粮），饿死/战斗死计入复活按钮计数
   const units = allCards(game).filter(c => META[c.type] && META[c.type].cat === "unit");
   let starved = 0, ateFood = 0;
   const dietEaten = {}; // {物资type: 数量}
@@ -265,8 +266,8 @@ export function onDayEnd(game) {
     const dietType = META[c.type].diet;
     // 优先 diet 偏好食物
     let foodCard = dietType ? allCards(game).find(x => x.type === dietType) : null;
-    // 没有偏好食物 → 任意食物兜底
-    if (!foodCard) foodCard = allCards(game).find(x => META[x.type] && META[x.type].cat === "food");
+    // 没有偏好食物 → 任意食物兜底（牧民除外：不吃生肉）
+    if (!foodCard) foodCard = allCards(game).find(x => META[x.type] && META[x.type].cat === "food" && !(c.type === "herder" && x.type === "rawmeat"));
     if (foodCard) {
       removeCardObj(game, foodCard);
       c.fed = Math.min(foodCapOf(c.type), (c.fed || 0) + (META[foodCard.type].food || 1));
@@ -275,6 +276,7 @@ export function onDayEnd(game) {
       return;
     }
     removeCardObj(game, c);
+    if (c.type === "herder") st.deadHerders = (st.deadHerders || 0) + 1; // 饿跑 → 复活按钮计数
     starved++;
   });
   if (ateFood > 0) {
@@ -380,6 +382,11 @@ export function feedUnit(game, d, target) {
   const cap = foodCapOf(unit.type);
   d.moving.slice().forEach(c => {
     if (!isFood(c.type)) return;
+    // 牧民不吃生肉（生肉是牧羊犬口粮，策划属性点表无 牧民+生肉）
+    if (unit.type === "herder" && c.type === "rawmeat") {
+      toast(game, "🥩 牧民不吃生肉，留给牧羊犬吧");
+      return;
+    }
     if ((unit.fed || 0) >= cap) { return; } // 已吃饱
     const v = META[c.type].food || 1;
     unit.fed = Math.min(cap, (unit.fed || 0) + v);
@@ -405,6 +412,7 @@ export function saveGame(game) {
     const data = {
       day: st.day, timeLeft: st.timeLeft, phase: st.phase, gold: st.gold,
       seenCards: st.seenCards, cardGets: st.cardGets, collection: st.collection, tasksDone: st.tasksDone, lastSave: Date.now(),
+      deadHerders: st.deadHerders || 0,
       piles: st.piles.map(p => ({
         x: p.x, y: p.y, isPack: p.isPack,
         cards: p.cards.map(c => {
@@ -438,6 +446,7 @@ export function loadGame(game) {
     st.cardGets = data.cardGets || {};
     st.collection = data.collection || {};
     st.tasksDone = data.tasksDone || {};
+    st.deadHerders = data.deadHerders || 0;
     (data.piles || []).forEach(sp => {
       const cards = (sp.cards || []).map(sc => {
         // 旧档容错：策划精简后移除的卡（wall/warehouse 等）或未知 type 直接跳过，防止读档崩溃

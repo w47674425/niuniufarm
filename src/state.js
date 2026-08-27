@@ -26,6 +26,7 @@ export function createState() {
     tasksDone: {},        // 已完成任务 id
     stats: { herders: 0, houses: 0, walls: 0, kills: 0, totalWood: 0, gold: 0, smelters: 0, equipped: 0, dogs: 0, milkProduced: 0, planes: 0, trips: 0 },
     nightSpawned: false,  // 本夜是否已刷怪
+    deadHerders: 0,       // 已死亡牧民数（市场旁复活按钮计数，看广告一次复活 1 名）
     lastSave: Date.now()
   };
 }

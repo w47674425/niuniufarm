@@ -165,6 +165,13 @@ body{
   gap:3px; z-index:5;}
 #market .m-emoji{font-size:38px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.15));}
 #app.night #market{background:rgba(40,52,90,.95);color:#ffe9a8;border-color:#e0b700;box-shadow:4px 4px 0 rgba(0,0,0,.4);}
+/* 复活按钮：市场旁（左侧），牧民死亡后出现；缩小圆钮，点击看广告复活 1 名 */
+#reviveBtn{position:absolute;right:132px;bottom:56px;width:46px;height:46px;border-radius:50%;
+  border:2px solid #fff;background:linear-gradient(180deg,#ffd76a,#ffb347);color:#5a3e00;
+  font-size:22px;line-height:1;cursor:pointer;z-index:50;align-items:center;justify-content:center;
+  box-shadow:0 3px 0 rgba(180,120,30,.4);display:none;}
+#reviveBtn:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(180,120,30,.4);}
+#reviveBtn:disabled{opacity:.7;cursor:default;}
 #toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);
   background:rgba(45,40,30,.88); color:#fff; padding:8px 16px 10px;
   border-radius:12px 10px 13px 11px / 11px 13px 10px 12px;

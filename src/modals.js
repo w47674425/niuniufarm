@@ -2,7 +2,7 @@
 
 import { META, PACKS, TASKS, RECIPES, foodCapOf, COW_BREEDS, DOG_BREEDS, TICKET, MONEY_NAME } from './config.js';
 import { rand } from './utils.js';
-import { mk, makePile, removeTypeN, countType } from './state.js';
+import { mk, makePile, removeTypeN, countType, allCards } from './state.js';
 import { render, updateHUD, toast } from './render.js';
 import { buyPack, loadMeta } from './systems.js';
 import { cardArt } from './art.js';
@@ -412,7 +412,7 @@ export function endGame(game) {
     '<div class="modal adbox">' +
     '<h2>🪦 牧场冷清了</h2>' +
     '<p>所有牧民都饿跑、离开了牧场…</p>' +
-    '<p style="color:#2e86de;font-weight:800;">看广告可召回 2 名牧民（附赠食物）</p>' +
+    '<p style="color:#2e86de;font-weight:800;">看广告可召回 1 名牧民（附赠食物）</p>' +
     '<div class="row">' +
     '<button class="btn gold" id="adBtn">📺 看广告召回</button>' +
     '<button class="btn alt" id="restartBtn">🔄 重新开始</button>' +
@@ -423,10 +423,11 @@ export function endGame(game) {
     box.innerHTML = '<h2>📺 广告播放中…</h2><div class="spinner"></div><p>召回牧民，请稍候</p>';
     setTimeout(function () {
       const s = game.boardSize();
-      const h1 = mk(game, "herder"), h2 = mk(game, "herder");
-      h1.name = "一一"; h2.name = "二二"; // 牧民命名（策划图鉴）
-      h1.fed = foodCapOf("herder"); h2.fed = foodCapOf("herder"); // 复活即满饱食，避免立刻饿死
-      makePile(game, rand(40, s.w - 140), rand(40, s.h - 200), [h1, h2, mk(game, "bread")]);
+      const h = mk(game, "herder");
+      // 复活名字取场上空缺的牧民名（一一/二二）
+      h.name = ["一一", "二二"].find(n => !allCards(game).some(c => c.type === "herder" && c.name === n)) || "";
+      h.fed = foodCapOf("herder"); // 复活即满饱食，避免立刻饿死
+      makePile(game, rand(40, s.w - 140), rand(40, s.h - 200), [h, mk(game, "bread")]);
       game.state.gameOver = false;
       if (ov.parentNode) ov.parentNode.removeChild(ov);
       render(game); updateHUD(game);

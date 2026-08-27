@@ -204,13 +204,16 @@ function applyRecipe(game, p, r) {
       if (r.hpGain) { if (eater.hp == null) eater.hp = META[eater.type].hp; eater.hp += r.hpGain; toast(game, "❤️ " + r.name + "：血量+" + r.hpGain + (potion && potion.charges > 0 ? "（药水剩 " + potion.charges + " 次）" : "")); }
     }
   }
-  // 同种狗强化（属性点表）：保留第一只，消耗第二只，攻/血成长
+  // 同种狗强化（属性点表）：两只同种狗 + 房屋 → 保留属性更高的一只，消耗另一只，攻/血成长
   if (r.kind === "boost") {
     const breed = Object.keys(r.in).find(k => META[k] && META[k].cat === "unit" && DOG_BREEDS.includes(k));
     if (breed) {
       const dogs = p.cards.filter(c => c.type === breed);
       if (dogs.length >= 2) {
-        const keep = dogs[0], sacrifice = dogs[1];
+        // 属性总分 = 基础攻/血 + 各自加成；保留更高的那只（反馈：属性加到更高者并保留）
+        const score = d => (META[breed].atk || 0) + (d.atkBonus || 0) + (META[breed].hp || 0) + (d.hpBonus || 0);
+        const keep = score(dogs[0]) >= score(dogs[1]) ? dogs[0] : dogs[1];
+        const sacrifice = keep === dogs[0] ? dogs[1] : dogs[0];
         keep.atkBonus = (keep.atkBonus || 0) + (r.atk || 0);
         keep.hpBonus = (keep.hpBonus || 0) + (r.hp || 0);
         removeCardObj(game, sacrifice);
@@ -249,7 +252,12 @@ function fightStep(game, p) {
   const monDead = monster.hp <= 0;
   const defDead = def.hp <= 0;
   if (monDead) killMonster(game, p, monster);
-  if (defDead) { removeCardObj(game, def); toast(game, "💀 " + META[def.type].label + " 倒下了"); }
+  if (defDead) {
+    // 牧民死亡 → 复活按钮计数（市场旁看广告复活）
+    if (def.type === "herder") game.state.deadHerders = (game.state.deadHerders || 0) + 1;
+    removeCardObj(game, def);
+    toast(game, "💀 " + META[def.type].label + " 倒下了");
+  }
   else if (!monDead) { audio.play("combat.hit"); }
 }
 

@@ -1,6 +1,6 @@
 // 主控制器：装配各模块、驱动昼夜循环、开局与事件绑定（对齐资料库准绳版）
 
-import { createState, makePile, removePile, mk, scatter } from './state.js';
+import { createState, makePile, removePile, mk, scatter, allCards } from './state.js';
 import { render, updateHUD, toast, renderPack, bindTaskCheck } from './render.js';
 import { bindDrag } from './drag.js';
 import { tick, loadGame, saveGame, checkTasks, loadMeta } from './systems.js';
@@ -8,7 +8,8 @@ import { showShop, showTasks, showCodexBook, showHelp, showSettings, toggleModal
 import { startTutorial, maybeShowFirstLaunch } from './tutorial.js';
 import { showHome, showPassport } from './home.js';
 import { bindToast } from './merge.js';
-import { TICK_MS, SAVE_KEY, foodCapOf } from './config.js';
+import { TICK_MS, SAVE_KEY, CARD_W, CARD_H, foodCapOf } from './config.js';
+import { clamp } from './utils.js';
 import * as audio from './audio.js';
 
 export class Game {
@@ -76,6 +77,41 @@ export class Game {
     if (this.refs.travelBtn) {
       this.refs.travelBtn.onclick = () => { audio.play("ui.click"); toggleModal(this, "passport", () => showPassport(this)); };
     }
+    // 复活按钮（市场旁，小按钮）：牧民死亡后出现；点击看广告复活 1 名牧民（验收反馈）
+    const reviveBtn = document.createElement("button");
+    reviveBtn.id = "reviveBtn";
+    reviveBtn.className = "revive-btn";
+    reviveBtn.title = "复活牧民";
+    reviveBtn.innerHTML = "👼";
+    reviveBtn.style.display = "none";
+    this.marketEl.parentNode.appendChild(reviveBtn);   // 挂到 #board，与市场并列
+    this._reviveBtn = reviveBtn;
+    reviveBtn.onclick = () => {
+      if (this.state.reviving || this.state.gameOver || (this.state.deadHerders || 0) <= 0) return;
+      this.state.reviving = true;
+      reviveBtn.disabled = true;
+      reviveBtn.textContent = "📺";
+      toast(this, "📺 看广告中…");
+      setTimeout(() => {
+        this.state.reviving = false;
+        reviveBtn.disabled = false;
+        reviveBtn.innerHTML = "👼";
+        if ((this.state.deadHerders || 0) > 0) {
+          this.state.deadHerders--;
+          const h = mk(this, "herder");
+          // 复活名字取场上空缺的牧民名（一一/二二）
+          h.name = ["一一", "二二"].find(n => !allCards(this).some(c => c.type === "herder" && c.name === n)) || "";
+          h.fed = foodCapOf("herder"); // 复活即满饱食
+          const s = this.boardSize();
+          const m = this.marketEl.getBoundingClientRect(), b = this.board.getBoundingClientRect();
+          const mx = m.left - b.left, my = m.top - b.top;
+          makePile(this, clamp(mx - CARD_W - 46, 8, s.w - CARD_W - 8), clamp(my, 8, s.h - CARD_H - 8), [h]);
+          render(this); updateHUD(this);
+          toast(this, "👼 牧民复活了！");
+        }
+        saveGame(this);
+      }, 1600);
+    };
     // 空格键：暂停/继续（输入框聚焦时不触发）
     window.addEventListener("keydown", (e) => {
       if (e.code !== "Space") return;
