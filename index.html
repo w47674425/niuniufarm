@@ -12,11 +12,14 @@
   <div id="app">
     <div id="topbar">
       <div class="stat" id="dayStat">第 1 天</div>
-      <div class="stat" id="phaseTag">☀️ 白天</div>
+      <div class="stat" id="phaseTag">☀️</div>
       <div class="stat" id="timer">01:30</div>
-      <div class="stat" id="goldStat">💰 ¥0</div>
-      <button class="iconbtn" id="speedBtn">▶▶</button>
-      <button class="iconbtn" id="pauseBtn">⏸</button>
+      <div class="stat goal" id="goalStat" hidden>🏕️ 蒙古包</div>
+      <div class="stat morale" id="moraleStat" title="团队士气" hidden>💚 100</div>
+      <div class="spacer"></div>
+      <div class="stat" id="goldStat">💰 0</div>
+      <button class="iconbtn" id="speedBtn" title="加速">▶▶</button>
+      <button class="iconbtn" id="pauseBtn" title="暂停">⏸</button>
     </div>
     <div id="board">
       <div id="nightVignette"></div>
@@ -25,11 +28,10 @@
       <div id="toast"></div>
     </div>
     <div id="bottombar">
+      <div class="navbtn" id="travelBtn"><span class="ne">🗺️</span>旅行</div>
       <div class="navbtn" id="packBtn"><span class="ne"><img src="img/ui_pack.png" alt="" /></span>卡包</div>
       <div class="navbtn" id="taskBtn"><span class="ne"><img src="img/ui_task.png" alt="" /></span>任务</div>
       <div class="navbtn" id="codexBtn"><span class="ne"><img src="img/ui_codex.png" alt="" /></span>图鉴</div>
-      <div class="navbtn" id="recipeBtn"><span class="ne"><img src="img/ui_recipe.png" alt="" /></span>合成</div>
-      <div class="navbtn" id="collectBtn"><span class="ne"><img src="img/ui_collect.png" alt="" /></span>收藏</div>
       <div class="navbtn" id="setBtn"><span class="ne"><img src="img/ui_set.png" alt="" /></span>设置</div>
     </div>
   </div>

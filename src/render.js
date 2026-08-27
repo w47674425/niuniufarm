@@ -1,10 +1,11 @@
 // 渲染层：把状态画到 DOM 上（对齐资料库准绳版「渲染 / HUD」区块）
 
-import { CARD_W, CARD_H, STACK_OFF, META, DAY_LEN, DAY_FRAC, foodCapOf } from './config.js';
+import { CARD_W, CARD_H, STACK_OFF, META, DAY_LEN, DAY_FRAC, foodCapOf, TICKET, destById } from './config.js';
 import { clamp } from './utils.js';
 import { allCards, countType, popCount } from './state.js';
 import { pileAction } from './merge.js';
 import { cardArt } from './art.js';
+import { moraleAvg, moraleLevel } from './spirit.js';
 
 export function fmtTime(s) {
   s = Math.max(0, Math.ceil(s));
@@ -17,8 +18,41 @@ export function updateHUD(game) {
   checkTasksSafe(game);
   game.refs.dayStat.textContent = "第 " + st.day + " 天";
   const ph = game.refs.phaseTag;
-  if (st.phase === "day") { ph.textContent = "☀️ 白天"; ph.className = "stat"; ph.classList.add("day"); }
-  else { ph.textContent = "🌙 夜晚"; ph.className = "stat"; ph.classList.add("night"); }
+  if (st.phase === "day") { ph.textContent = "☀️"; ph.className = "stat"; ph.classList.add("day"); }
+  else { ph.textContent = "🌙"; ph.className = "stat"; ph.classList.add("night"); }
+  // 地标目标 HUD：进入目的地后常驻显示本章目标（材料+金币进度），可建造时高亮
+  const goal = game.refs.goalStat;
+  if (goal) {
+    if (st.destId && st.landmarkBuilt) {
+      goal.hidden = false;
+      goal.textContent = "✅ 旅程达成";
+      goal.classList.remove("ready");
+    } else if (st.destId) {
+      const dest = destById(st.destId);
+      if (dest) {
+        const lm = dest.landmark;
+        let matsOk = true;
+        let matsHave = 0, matsNeed = 0;
+        Object.keys(lm.need).forEach(t => {
+          const have = countType(game, t);
+          const need = lm.need[t];
+          matsHave += Math.min(have, need); matsNeed += need;
+          if (have < need) matsOk = false;
+        });
+        const ticketOk = st.gold >= lm.tickets;
+        const ready = matsOk && ticketOk;
+        goal.hidden = false;
+        let txt;
+        if (ready) txt = "🏗️ " + lm.name + " 可建造！";
+        else if (matsOk) txt = lm.emoji + " " + lm.name + " " + TICKET + Math.min(st.gold, lm.tickets) + "/" + lm.tickets + " 材料✓";
+        else txt = lm.emoji + " " + lm.name + " " + TICKET + Math.min(st.gold, lm.tickets) + "/" + lm.tickets + " ✦" + matsHave + "/" + matsNeed;
+        goal.textContent = txt;
+        goal.classList.toggle("ready", ready);
+      }
+    } else {
+      goal.hidden = true;
+    }
+  }
   // 正式背景图：用内联样式图层，避免构建后 CSS 相对路径(resolve 到 dist/assets)导致 404
   const app = game.app;
   if (app) {
@@ -43,7 +77,21 @@ export function updateHUD(game) {
   const nightAt = DAY_LEN * (1 - DAY_FRAC); // 夜晚开始剩余秒数
   const warn = (st.phase === "day" && st.timeLeft <= nightAt + 10);
   game.refs.timer.classList.toggle("night-warn", warn);
-  game.refs.goldStat.textContent = "💰 ¥" + st.gold;
+  game.refs.goldStat.textContent = TICKET + " " + st.gold;
+  // 团队士气 HUD（精神系统 §4.6）：进入目的地后显示 💚均值，<40 红色预警、≥70 绿色
+  const moraleEl = game.refs.moraleStat;
+  if (moraleEl) {
+    if (st.destId) {
+      moraleEl.hidden = false;
+      moraleEl.textContent = "💚 " + Math.round(moraleAvg(game));
+      moraleEl.classList.remove("low", "high");
+      const lvl = moraleLevel(game);
+      if (lvl === "low") moraleEl.classList.add("low");
+      else if (lvl === "high") moraleEl.classList.add("high");
+    } else {
+      moraleEl.hidden = true;
+    }
+  }
   // 刷新统计（任务依赖）
   st.stats.herders = popCount(game);
   st.stats.houses = countType(game, "house");
@@ -130,6 +178,12 @@ export function render(game) {
         const cur = c.hp != null ? c.hp : (meta.hp || 0);
         const max2 = (meta.hp || 0) + (c.hpBonus || 0);
         html += '<div class="cb">⚔️' + atk + ' ❤️' + cur + '/' + max2 + '</div>';
+      }
+      // 工人精神徽标（卡片右上角，精神系统 §4.6）：绿=充足 / 黄=偏低 / 红=危险
+      if (c.type === "herder" && c.spirit != null) {
+        const sp = Math.round(c.spirit);
+        const cls = sp >= 70 ? "ok" : (sp >= 40 ? "warn" : "bad");
+        html += '<div class="spirit-tag ' + cls + '">💚' + sp + '</div>';
       }
       // 所有单位显示饱食度（上限取该单位自身配置）
       if (meta.cat === "unit" && c.fed != null) {

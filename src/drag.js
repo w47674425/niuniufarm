@@ -6,6 +6,7 @@ import { makePile, pileOf, allCards, detach, pileAtPoint } from './state.js';
 import { render, updateHUD } from './render.js';
 import { sellCards, feedUnit } from './systems.js';
 import { isFood } from './merge.js';
+import { showLandmarkBuild } from './modals.js';
 import * as audio from './audio.js';
 
 export function bindDrag(game) {
@@ -54,6 +55,14 @@ export function bindDrag(game) {
     const d = game.state.drag;
     if (!d) return;
     game.state.drag = null;
+    // 点击工地卡（未拖动）→ 打开地标建造弹窗
+    if (!d.moved) {
+      const siteCard = d.moving.find(c => META[c.type] && META[c.type].isLandmarkSite);
+      if (siteCard) {
+        showLandmarkBuild(game, d.pile);
+        return;
+      }
+    }
     const bx = d.pile.x + d.dx;
     const by = d.pile.y + d.index * STACK_OFF + d.dy;
     const cx = bx + CARD_W / 2, cy = by + CARD_H / 2;
@@ -65,6 +74,7 @@ export function bindDrag(game) {
     if (cx > mr.left - br.left && cx < mr.right - br.left && cy > mr.top - br.top && cy < mr.bottom - br.top) {
       sellCards(game, d);
       audio.play("money.sell");
+      if (game.tutorial) game.tutorial.notify("sell", d.moving);
       render(game); updateHUD(game);
       return;
     }
@@ -79,6 +89,7 @@ export function bindDrag(game) {
         audio.play("feed");
         // 没喂完的食物卡（含吃撑了的）叠到目标堆
         if (d.moving.length > 0) target.cards = target.cards.concat(d.moving);
+        if (game.tutorial) game.tutorial.notify("feed", target);
         render(game); updateHUD(game);
         return;
       }

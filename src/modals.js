@@ -1,11 +1,13 @@
 // 弹窗层：卡包商店 / 任务 / 图鉴 / 合成图鉴 / 帮助 / 设置 / 游戏结束
 
-import { META, PACKS, TASKS, RECIPES, foodCapOf, COW_BREEDS } from './config.js';
+import { META, PACKS, TASKS, RECIPES, foodCapOf, COW_BREEDS, TICKET, MONEY_NAME, DESTINATIONS, destById, LANDMARK_BOOST } from './config.js';
 import { rand } from './utils.js';
-import { mk, makePile } from './state.js';
+import { mk, makePile, removeTypeN, countType } from './state.js';
 import { render, updateHUD, toast } from './render.js';
-import { buyPack } from './systems.js';
+import { buyPack, loadMeta, saveMeta, stampDest, deleteDestSave, loadDestGame } from './systems.js';
+import { landmarkMoraleBoost } from './spirit.js';
 import { cardArt } from './art.js';
+import { startTutorial } from './tutorial.js';
 import * as audio from './audio.js';
 
 // 卡图标签：有正式图 → <img>，否则退回 emoji（cls 控制尺寸）
@@ -39,6 +41,7 @@ function openModal(game, html, opts) {
   ov.className = "overlay"; ov.id = "modalOverlay";
   ov.innerHTML = '<div class="modal">' + html + '</div>';
   game.board.appendChild(ov);
+  game._openOv = ov;   // 单例记录：任何菜单弹窗打开时主循环冻结时间（见 tick 检查）
   function tryClose(e) {
     const onBackdrop = (opts.dismissBackdrop !== false && e.target === ov);
     const onCloseBtn = !!(e.target.closest && e.target.closest(".close"));
@@ -49,14 +52,17 @@ function openModal(game, html, opts) {
   return ov;
 }
 
-// 卡包商店
+// 卡包商店：通用包全目的地可用；专属包（destOnly）仅当前目的地可见
 export function showShop(game) {
-  let html = '<h2>🎁 卡包商店</h2><p>用金币购买卡包，解锁新卡牌与配方。</p>';
-  PACKS.forEach(pk => {
+  const dest = game.state.destId ? destById(game.state.destId) : null;
+  const avail = PACKS.filter(pk => !pk.destOnly || (dest && pk.destOnly === dest.id));
+  let html = '<h2>🎁 卡包商店</h2><p>用' + MONEY_NAME + '购买卡包，解锁新卡牌与配方。' +
+    (dest && dest.shopPackIds && dest.shopPackIds.length ? '<br><span style="font-size:12px;color:#8a5a00;">📍 ' + dest.name + ' 专属包已解锁</span>' : '') + '</p>';
+  avail.forEach(pk => {
     html += '<div class="shop-item"><div class="si-emoji">' + pk.emoji + '</div>' +
       '<div class="si-info"><div class="si-name">' + pk.name + '</div>' +
       '<div class="si-desc">' + pk.desc + '</div></div>' +
-      '<button class="si-buy" data-pack="' + pk.id + '">¥' + pk.price + '</button></div>';
+      '<button class="si-buy" data-pack="' + pk.id + '">' + TICKET + pk.price + '</button></div>';
   });
   const ov = openModal(game, html);
   ov.querySelectorAll(".si-buy").forEach(b => {
@@ -74,7 +80,7 @@ export function showTasks(game) {
   TASKS.forEach(t => {
     const done = !!game.state.tasksDone[t.id];
     html += '<div class="task-item' + (done ? " done" : "") + '"><div class="t-check">' + (done ? "✓" : "") + '</div>' +
-      '<div class="t-name">' + t.name + '</div><div class="t-rew">+¥' + t.rew + '</div></div>';
+      '<div class="t-name">' + t.name + '</div><div class="t-rew">+' + TICKET + t.rew + '</div></div>';
   });
   html += '<button class="close" id="taskClose">关闭</button>';
   const ov = openModal(game, html);
@@ -82,11 +88,11 @@ export function showTasks(game) {
   return ov;
 }
 
-// 卡牌图鉴（不显示变异牛——它们在收藏系统展示；普通牛保留）
-export function showCodex(game) {
+// 卡牌图鉴 HTML（不含关闭按钮；由 showCodexBook 统一装配）
+function codexHtml(game) {
   const gets = game.state.cardGets || {};
   const allTypes = Object.keys(META).filter(t => !COW_BREEDS.includes(t));
-  let html = '<h2>📖 卡牌图鉴</h2><p>已发现 ' + Object.keys(game.state.seenCards).filter(t => !COW_BREEDS.includes(t)).length + ' / ' + allTypes.length + ' 种</p><div class="codex-grid">';
+  let html = '<p>已发现 ' + Object.keys(game.state.seenCards).filter(t => !COW_BREEDS.includes(t)).length + ' / ' + allTypes.length + ' 种</p><div class="codex-grid">';
   allTypes.forEach(t => {
     const seen = !!game.state.seenCards[t];
     const m = META[t];
@@ -96,10 +102,8 @@ export function showCodex(game) {
       '<div class="cc-emoji">' + (seen ? artTag(t, "cc-img") : "❓") + '</div>' +
       '<div class="cc-name">' + (seen ? m.label : "未解锁") + '</div></div>';
   });
-  html += '</div><button class="close" id="codexClose">关闭</button>';
-  const ov = openModal(game, html);
-  document.getElementById("codexClose").onclick = function () { closeModal(game, ov); };
-  return ov;
+  html += '</div>';
+  return html;
 }
 
 // 变异牛收藏（按稀有度分组：普通/稀有/史诗/传说；仅 12 种变异牛，普通牛不进收藏）
@@ -109,11 +113,12 @@ const COLLECT_GROUPS = [
   { rarity: 3, label: "⭐⭐⭐ 史诗" },
   { rarity: 4, label: "⭐⭐⭐⭐ 传说" }
 ];
-export function showCollection(game) {
+// 变异牛收藏 HTML（不含关闭按钮；由 showCodexBook 统一装配）
+function collectionHtml(game) {
   const col = game.state.collection || {};
   const cows = COW_BREEDS.filter(t => META[t] && META[t].cowKind);
   const owned = cows.filter(t => (col[t] || 0) > 0).length;
-  let html = '<h2>🐮 变异牛收藏</h2><p>已收集 ' + owned + ' / ' + cows.length + ' 种</p>';
+  let html = '<p>已收集 ' + owned + ' / ' + cows.length + ' 种</p>';
   COLLECT_GROUPS.forEach(g => {
     const list = cows.filter(t => META[t].rarity === g.rarity);
     if (list.length === 0) return;
@@ -129,10 +134,7 @@ export function showCollection(game) {
     });
     html += '</div>';
   });
-  html += '<button class="close" id="colClose">关闭</button>';
-  const ov = openModal(game, html);
-  document.getElementById("colClose").onclick = function () { closeModal(game, ov); };
-  return ov;
+  return html;
 }
 
 // 合成图鉴：按类别分组展示所有配方（输入 → 输出）
@@ -213,8 +215,9 @@ function recipeDifficulty(r) {
   if (r.kind === "breed" || r.kind === "train") d += 20;
   return d;
 }
-export function showRecipes(game) {
-  let html = '<h2>⚗️ 合成图鉴</h2><p>把输入卡拖到牧民上合成；采集/生产/制作产物会掉落在旁边。<br><span style="font-size:12px;color:#7a715c;">已按难易排序：越靠前越容易。绿色下划线材料可点击跳到它的配方。</span></p>';
+// 合成配方 HTML（不含关闭按钮；ri-link 跳转事件由 showCodexBook 绑定）
+function recipesHtml() {
+  let html = '<p>把输入卡拖到牧民上合成；采集/生产/制作产物会掉落在旁边。<br><span style="font-size:12px;color:#7a715c;">已按难易排序：越靠前越容易。绿色下划线材料可点击跳到它的配方。</span></p>';
   RECIPE_GROUPS.forEach(g => {
     const list = RECIPES.filter(r => r.kind === g.key)
       .sort((a, b) => recipeDifficulty(a) - recipeDifficulty(b));
@@ -231,24 +234,60 @@ export function showRecipes(game) {
     });
     html += '</div>';
   });
-  html += '<button class="close" id="recipeClose">关闭</button>';
-  const ov = openModal(game, html);
-  // 跳转：点击可合成材料 → 滚动到产出它的配方行并高亮闪烁
-  ov.querySelectorAll(".ri-link").forEach(a => {
-    a.onclick = function (e) {
-      e.preventDefault(); e.stopPropagation();
-      const maker = a.getAttribute("data-maker");
-      const row = ov.querySelector("#ri-" + maker);
-      if (!row) return;
-      row.scrollIntoView({ behavior: "smooth", block: "center" });
-      row.classList.remove("flash");
-      void row.offsetWidth; // 重触发动画
-      row.classList.add("flash");
+  return html;
+}
+
+// ===================== 图鉴书（卡牌 / 合成 / 牛收藏 三合一） =====================
+// 底部导航单一入口：解决 7 按钮拥挤问题，信息架构也更清晰
+const BOOK_TABS = [
+  { key: "codex", label: "📖 卡牌" },
+  { key: "recipes", label: "⚗️ 合成" },
+  { key: "collect", label: "🐮 牛收藏" }
+];
+export function showCodexBook(game, tab) {
+  const ov = openModal(game,
+    '<h2>📖 图鉴书</h2>' +
+    '<div class="book-tabs">' + BOOK_TABS.map(t =>
+      '<button class="book-tab' + (t.key === tab ? " on" : "") + '" data-tab="' + t.key + '">' + t.label + '</button>'
+    ).join("") + '</div>' +
+    '<div class="book-body"></div>' +
+    '<button class="close" id="bookClose">关闭</button>');
+  const body = ov.querySelector(".book-body");
+  function paint(key) {
+    if (key === "recipes") body.innerHTML = recipesHtml();
+    else if (key === "collect") body.innerHTML = collectionHtml(game);
+    else body.innerHTML = codexHtml(game);
+    // 配方跳转：点击可合成材料 → 滚动到产出它的配方行并高亮闪烁
+    if (key === "recipes") {
+      body.querySelectorAll(".ri-link").forEach(a => {
+        a.onclick = function (e) {
+          e.preventDefault(); e.stopPropagation();
+          const maker = a.getAttribute("data-maker");
+          const row = body.querySelector("#ri-" + maker);
+          if (!row) return;
+          row.scrollIntoView({ behavior: "smooth", block: "center" });
+          row.classList.remove("flash");
+          void row.offsetWidth; // 重触发动画
+          row.classList.add("flash");
+        };
+      });
+    }
+  }
+  paint(tab);
+  ov.querySelectorAll(".book-tab").forEach(b => {
+    b.onclick = function () {
+      ov.querySelectorAll(".book-tab").forEach(x => x.classList.remove("on"));
+      b.classList.add("on");
+      paint(b.getAttribute("data-tab"));
     };
   });
-  document.getElementById("recipeClose").onclick = function () { closeModal(game, ov); };
+  document.getElementById("bookClose").onclick = function () { closeModal(game, ov); };
   return ov;
 }
+// 兼容旧导出（薄包装）
+export function showCodex(g) { return showCodexBook(g, "codex"); }
+export function showRecipes(g) { return showCodexBook(g, "recipes"); }
+export function showCollection(g) { return showCodexBook(g, "collect"); }
 
 // 帮助 / 玩法说明
 export function showHelp(game) {
@@ -260,13 +299,14 @@ export function showHelp(game) {
     '<li>按住<b>中间</b>一张 → 只带走它和上面的。</li>' +
     '<li>按住<b>最顶</b>一张 → 只拆出那张。</li></ul>' +
     '<p><b>生产</b>：把 🧑‍🌾牧民 拖到 🌳树木/⛰️岩石/🌿蓝莓丛/🗻铁矿脉/💎金矿脉/🌱药田 上 → 自动产出资源（进度条）。</p>' +
-    '<p><b>喂食</b>：把 🫐蓝莓/🍞面包/🍖烤肉/🥗拼盘 拖到 🧑‍🌾牧民 或 🐕牧羊犬 上喂饱（每天每单位消耗 1 餐，否则饿死）。</p>' +
-    '<p><b>自动进食</b>：每天结算时，饱食不足的单位会自动吃 1 个自己偏好的食物——🧑‍🌾牧民吃 🫐蓝莓，🐕牧羊犬吃 🥩生肉；没有偏好食物会吃任意食物，全都没有才饿死。</p>' +
-    '<p><b>饱食上限</b>：各单位上限不同（牧民 10、牧羊犬 8），喂食/进食都受各自上限约束。</p>' +
+    '<p><b>喂食</b>：把 🫐蓝莓/🍞面包/🍖烤肉/🥗拼盘 拖到 🧑‍🌾牧民 上喂饱（每天每单位消耗 1 餐，断粮会"饿跑"）。</p>' +
+    '<p><b>自动进食</b>：每天结算时，饱食不足的单位会自动吃 1 个自己偏好的食物——🧑‍🌾牧民吃 🫐蓝莓；没有偏好食物会吃任意食物，全都没有才饿跑。</p>' +
+    '<p><b>饱食上限</b>：牧民上限 10，喂食/进食受上限约束。</p>' +
     '<p><b>建造</b>：把 2🪵+1🪨 堆到牧民上 → 🏠房屋（可繁殖）；3🪨 → 🧱城墙；更多建筑见卡牌图鉴。</p>' +
-    '<p><b>制作/冶炼/烹饪</b>：牧民+材料 可造 🗡️木剑/🛡️盾/⚒️工具（产物掉落在旁边，需手动拖到 🐕牧羊犬 身上装备）；建 🔥冶炼厂 后炼铁锭；建 🍳厨房 后烤肉做面包。全部配方见「⚗️合成」。</p>' +
+    '<p><b>制作/冶炼/烹饪</b>：牧民+材料 可造 🗡️木剑/🛡️盾/⚒️工具（产物掉落在旁边，需手动拖到 🧑‍🌾牧民 身上装备）；建 🔥冶炼厂 后炼铁锭；建 🍳厨房 后烤肉做面包。全部配方见「⚗️合成」。</p>' +
     '<p><b>繁殖</b>：🏠房屋 + 2🧑‍🌾牧民 同堆 → 自动生出小牧民（房屋冷却 120 秒）。</p>' +
-    '<p><b>战斗</b>：🌙夜晚刷 🥷小偷/👹大盗，会自动扑向牧民；把 🐕牧羊犬/牧民 拖到怪物上迎战，击杀掉落金币。</p>' +
+    '<p><b>夜晚</b>：🌙夜幕降临后没有怪物，夜晚安宁，可安心规划产线。</p>' +
+    '<p><b>精神</b>：💚每名牧民右上角有精神值。打工消耗精神（夜班 ×2、断粮加倍）；在 🔥篝火 旁休息或闲置会恢复。精神归零会"想家离职"（可再雇）。团队士气高 → 生产更快，士气<40 → 变慢。</p>' +
     '<p><b>赚钱</b>：把可卖的卡（🪵🪨⚙️…）拖到 🏪市场 换金币，再去 🎁卡包 抽新卡。</p>' +
     '<p>进度自动存档，关掉也能离线攒钱。</p>' +
     '<button class="close" id="helpClose">知道啦</button>');
@@ -293,8 +333,9 @@ export function showSettings(game) {
     '<label class="set-toggle"><input type="checkbox" id="musicToggle" ' + musicChecked + ' /><span class="set-slider"></span></label></div>' +
     '</div>' +
     '<div class="row">' +
-    '<button class="btn alt" id="testGoldBtn">💰 测试 +1000</button>' +
+    '<button class="btn alt" id="testGoldBtn">' + TICKET + ' 测试 +1000</button>' +
     '<button class="btn alt" id="helpBtn">❔ 玩法帮助</button>' +
+    '<button class="btn" id="tutBtn">🎓 新手教程</button>' +
     '<button class="btn alt" id="resetBtn">🗑 重置存档</button>' +
     '<button class="close" id="closeSet">关闭</button>' +
     '</div>');
@@ -317,9 +358,15 @@ export function showSettings(game) {
     game.state.stats.gold = game.state.gold;
     updateHUD(game);
     audio.play("money.sell");
-    toast(game, "💰 测试金币 +1000（现有 ¥" + game.state.gold + "）");
+    toast(game, TICKET + " 测试金币 +1000（现有 " + TICKET + game.state.gold + "）");
   };
   document.getElementById("resetBtn").onclick = function () { game.resetGame(); };
+  // 新手教程入口：关闭设置 → 开启引导（结束时会从存档还原当前进度，不丢档）
+  document.getElementById("tutBtn").onclick = function () {
+    audio.play("ui.click");
+    closeModal(game, ov);
+    startTutorial(game);
+  };
   // 帮助入口：关闭设置 → 打开玩法帮助
   document.getElementById("helpBtn").onclick = function () {
     audio.play("ui.click");
@@ -330,24 +377,172 @@ export function showSettings(game) {
   return ov;
 }
 
-// 游戏结束（全员饿死）
+// ===================== 章节选择（打工旅游） =====================
+export function showChapterSelect(game) {
+  const meta = loadMeta();
+  const stampedCount = DESTINATIONS.filter(d => meta.stamps[d.id]).length;
+  let html = '<h2>🗺️ 打工旅游</h2><p>选择目的地，打工攒金币，建造地标完成旅程！</p>' +
+    '<div class="passport-row">📒 旅行护照：已达成 <b>' + stampedCount + '/' + DESTINATIONS.length + '</b> 站' +
+    DESTINATIONS.map(d => '<span class="pp-stamp' + (meta.stamps[d.id] ? " got" : "") + '" title="' + d.name + '">' + (meta.stamps[d.id] ? d.emoji : "·") + '</span>').join("") +
+    '</div><div class="dest-list">';
+  DESTINATIONS.forEach(d => {
+    const unlocked = meta.unlocked.includes(d.id);
+    const hasSave = !!localStorage.getItem("niuniu_dest_" + d.id);
+    const stamped = !!meta.stamps[d.id];
+    let statusHtml = "";
+    if (!unlocked) {
+      statusHtml = '<div class="dest-status locked">🔒 未解锁</div>';
+    } else if (stamped && !hasSave) {
+      statusHtml = '<div class="dest-status done">✅ 已达成</div>';
+    } else if (hasSave) {
+      statusHtml = '<div class="dest-status active">📍 进行中</div>';
+    } else {
+      statusHtml = '<div class="dest-status new">🆕 可出发</div>';
+    }
+    html += '<div class="dest-item' + (unlocked ? "" : " locked") + '">' +
+      '<div class="dest-emoji">' + d.emoji + '</div>' +
+      '<div class="dest-info">' +
+        '<div class="dest-name">' + d.name + (stamped ? ' 📛' : '') + '</div>' +
+        '<div class="dest-landmark">' + d.landmark.emoji + ' ' + d.landmark.name + ' · ' + TICKET + d.landmark.tickets + '</div>' +
+        statusHtml +
+      '</div>' +
+      '<div class="dest-actions">';
+    if (unlocked) {
+      if (hasSave) {
+        html += '<button class="btn sm" data-act="continue" data-dest="' + d.id + '">继续</button>';
+        html += '<button class="btn sm alt" data-act="restart" data-dest="' + d.id + '">重启</button>';
+      } else {
+        html += '<button class="btn sm" data-act="new" data-dest="' + d.id + '">' + (stamped ? '重玩' : '出发') + '</button>';
+      }
+    } else {
+      html += '<span class="dest-lock">🔒</span>';
+    }
+    html += '</div></div>';
+  });
+  html += '</div><button class="close" id="destClose">关闭</button>';
+  const ov = openModal(game, html);
+  ov.querySelectorAll("[data-act]").forEach(b => {
+    b.onclick = function () {
+      const act = b.getAttribute("data-act");
+      const destId = b.getAttribute("data-dest");
+      closeModal(game, ov);
+      if (act === "continue") {
+        game.continueDestination(destId);
+      } else {
+        // new / restart 都重新开始
+        deleteDestSave(destId);
+        game.startDestination(destId);
+      }
+    };
+  });
+  document.getElementById("destClose").onclick = function () { closeModal(game, ov); };
+  return ov;
+}
+
+// ===================== 地标建造弹窗 =====================
+export function showLandmarkBuild(game, sitePile) {
+  const dest = destById(game.state.destId);
+  if (!dest) return;
+  const lm = dest.landmark;
+  const st = game.state;
+  // 检查材料是否充足
+  let canBuild = st.gold >= lm.tickets;
+  const needRows = Object.keys(lm.need).map(type => {
+    const have = countType(game, type);
+    const need = lm.need[type];
+    const ok = have >= need;
+    if (!ok) canBuild = false;
+    return '<div class="lm-row' + (ok ? " ok" : " lack") + '">' +
+      '<span class="lm-icon">' + (META[type] ? META[type].emoji : "❓") + '</span>' +
+      '<span class="lm-name">' + (META[type] ? META[type].label : type) + '</span>' +
+      '<span class="lm-count">' + have + '/' + need + '</span></div>';
+  }).join("");
+  const ticketOk = st.gold >= lm.tickets;
+  if (!ticketOk) canBuild = false;
+  let html = '<h2>' + lm.emoji + ' 建造「' + lm.name + '」</h2>';
+  html += '<p>本章目标：攒齐材料与金币，建造地标完成旅程！</p>';
+  html += '<div class="lm-materials"><h3>所需材料</h3>' + needRows + '</div>';
+  html += '<div class="lm-row' + (ticketOk ? " ok" : " lack") + '">' +
+    '<span class="lm-icon">' + TICKET + '</span>' +
+    '<span class="lm-name">' + MONEY_NAME + '</span>' +
+    '<span class="lm-count">' + st.gold + '/' + lm.tickets + '</span></div>';
+  html += '<div class="row">';
+  html += '<button class="btn" id="lmBuild"' + (canBuild ? "" : " disabled") + '>🏗️ 建造</button>';
+  html += '<button class="close" id="lmClose">关闭</button>';
+  html += '</div>';
+  const ov = openModal(game, html);
+  document.getElementById("lmClose").onclick = function () { closeModal(game, ov); };
+  if (canBuild) {
+    document.getElementById("lmBuild").onclick = function () {
+      // 消耗材料
+      Object.keys(lm.need).forEach(type => {
+        removeTypeN(game, type, lm.need[type]);
+      });
+      // 消耗金币
+      st.gold -= lm.tickets;
+      st.stats.gold = st.gold;
+      // 移除工地堆
+      const idx = st.piles.indexOf(sitePile);
+      if (idx >= 0) st.piles.splice(idx, 1);
+      // 标记建成
+      st.landmarkBuilt = true;
+      // 精神系统（§4.6 Sources#4 简化）：地标落成 → 全队精神大涨
+      landmarkMoraleBoost(game, LANDMARK_BOOST);
+      // 盖章 + 解锁下一档
+      stampDest(dest.id);
+      closeModal(game, ov);
+      render(game); updateHUD(game);
+      audio.play("ui.task");
+      // 显示达成弹窗
+      showLandmarkComplete(game, dest);
+    };
+  }
+  return ov;
+}
+
+// 地标达成弹窗
+function showLandmarkComplete(game, dest) {
+  const meta = loadMeta();
+  const nextDest = DESTINATIONS.find(d => d.unlock === dest.unlock + 1);
+  const ov = openModal(game,
+    '<h2>🎉 旅程达成！</h2>' +
+    '<p style="font-size:18px;text-align:center;">' + dest.emoji + ' <b>' + dest.name + '</b></p>' +
+    '<p style="text-align:center;font-size:36px;">' + dest.landmark.emoji + '</p>' +
+    '<p style="text-align:center;font-weight:800;">' + dest.landmark.name + ' 建造完成！</p>' +
+    '<p style="text-align:center;">📚 护照已盖章：' + dest.name + '</p>' +
+    (nextDest ? '<p style="text-align:center;color:#2e86de;">🔓 已解锁下一站：' + nextDest.emoji + ' ' + nextDest.name + '</p>' : '<p style="text-align:center;color:#f2b705;">🏆 你已解锁全部目的地！</p>') +
+    '<div class="row">' +
+    '<button class="btn" id="lmCont">继续游玩</button>' +
+    (nextDest ? '<button class="btn alt" id="lmNext">前往 ' + nextDest.name + '</button>' : '') +
+    '</div>');
+  document.getElementById("lmCont").onclick = function () { closeModal(game, ov); };
+  if (nextDest) {
+    document.getElementById("lmNext").onclick = function () {
+      closeModal(game, ov);
+      game.startDestination(nextDest.id);
+    };
+  }
+  return ov;
+}
+
+// 游戏结束（全员饿跑/离开）——v0.3 §4.5 去剧情化："饿死"→"饿跑离开"
 export function endGame(game) {
   game.state.gameOver = true;
   const ov = document.createElement("div");
   ov.className = "overlay"; ov.id = "overOverlay";
   ov.innerHTML =
     '<div class="modal adbox">' +
-    '<h2>🪦 牧场荒废了</h2>' +
-    '<p>所有牧民都饿死啦！</p>' +
-    '<p style="color:#2e86de;font-weight:800;">看广告可复活 2 名牧民（附赠食物）</p>' +
+    '<h2>🪦 牧场冷清了</h2>' +
+    '<p>所有牧民都饿跑、离开了牧场…</p>' +
+    '<p style="color:#2e86de;font-weight:800;">看广告可召回 2 名牧民（附赠食物）</p>' +
     '<div class="row">' +
-    '<button class="btn gold" id="adBtn">📺 看广告复活</button>' +
+    '<button class="btn gold" id="adBtn">📺 看广告召回</button>' +
     '<button class="btn alt" id="restartBtn">🔄 重新开始</button>' +
     '</div></div>';
   game.board.appendChild(ov);
   document.getElementById("adBtn").onclick = function () {
     const box = ov.querySelector(".modal");
-    box.innerHTML = '<h2>📺 广告播放中…</h2><div class="spinner"></div><p>复活牧民，请稍候</p>';
+    box.innerHTML = '<h2>📺 广告播放中…</h2><div class="spinner"></div><p>召回牧民，请稍候</p>';
     setTimeout(function () {
       const s = game.boardSize();
       const h1 = mk(game, "herder"), h2 = mk(game, "herder");

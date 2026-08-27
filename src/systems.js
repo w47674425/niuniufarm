@@ -1,18 +1,45 @@
 // 业务系统层：主循环昼夜 / 怪物 / 每日结算 / 存档 / 卡包 / 任务 / 出售 / 喂食
 // 对齐资料库准绳版「主循环 / 每日结算 / 卡包 / 任务 / 存档 / 堆叠触发」区块
 
-import { DAY_LEN, DAY_FRAC, TICK_MS, CARD_W, CARD_H, MON_SPEED, ENGAGE_DIST, META, PACKS, TASKS, SAVE_KEY, foodCapOf, COW_BREEDS } from './config.js';
+import { DAY_LEN, DAY_FRAC, TICK_MS, CARD_W, CARD_H, MON_SPEED, ENGAGE_DIST, META, PACKS, TASKS, SAVE_KEY, SAVE_DEST_PREFIX, META_KEY, TICKET, MONEY_NAME, DESTINATIONS, destById, foodCapOf, COW_BREEDS } from './config.js';
 import { rand, clamp } from './utils.js';
 import { mk, makePile, removePile, allCards, countType, removeCardObj, detach, scatter, popCount, markSeen } from './state.js';
 import { isFood, pileAction as _pileAction, doAction as _doAction } from './merge.js';
 import { render, updateHUD, toast, playDrop } from './render.js';
+import { regenWorkers, dayEndSpirit } from './spirit.js';
 import { endGame } from './modals.js';
 import * as audio from './audio.js';
+
+// 教程沙盘主循环：只推进生产/建造/繁殖动作，冻结昼夜与怪物（不调用 saveGame）
+function advanceTutorial(game) {
+  const st = game.state;
+  const dt = TICK_MS / 1000; // 教程用 1x 固定节奏，忽略加速
+  st.piles.forEach(p => {
+    if (p.isPack) return;
+    const info = _pileAction(game, p);
+    if (!info) { p.prog = 0; p.action = null; return; }
+    if (p.action !== info.type) { p.action = info.type; p.prog = 0; }
+    p.actionSec = info.sec;
+    p.prog += dt;
+    if (p.prog >= info.sec) {
+      p.prog = 0;
+      _doAction(game, p, info);
+      render(game); updateHUD(game);
+    }
+  });
+  if (st._drops && st._drops.length) st._drops = []; // 丢弃教程中的掉落动画残留
+  if (st.piles.some(p => !p.isPack && p.action && p.actionSec)) render(game);
+  updateHUD(game);
+}
 
 // ===================== 主循环 tick（由 game 每 TICK_MS 调用） =====================
 export function tick(game) {
   const st = game.state;
+  // 教程沙盘：只推进生产/建造/繁殖动作，冻结昼夜、怪物与自动存档（避免污染玩家存档）
+  if (st.tutorialActive) { advanceTutorial(game); return; }
   if (st.paused || st.gameOver) return;
+  // 任何菜单/弹窗打开时冻结时间（首页/章节选择/商店/任务/设置等）：决策界面不推进昼夜
+  if (game._openOv) return;
   if (!st.packOpened) return; // 新手卡包未打开：倒计时冻结，游戏未真正开始
   const dt = (TICK_MS / 1000) * (st.speed || 1); // 速度倍率：1x/2x/4x
   // 昼夜推进
@@ -57,6 +84,8 @@ export function tick(game) {
       }
     }
   });
+  // 精神系统（§4.6）：闲置/篝火旁缓慢回精神（每 tick）
+  regenWorkers(game, dt);
   // 怪物移动与交战
   moveMonsters(game);
   // 自适应音乐状态：昼夜 + 威胁等级（夜间怪物数 /6，封顶 1）
@@ -74,6 +103,7 @@ export function tick(game) {
 }
 
 // ===================== 昼夜切换 =====================
+// v0.3：夜间进攻已移除（覆盖 GDD §4.6）。夜晚仅剩视觉/节奏变化，不再刷怪。
 export function updatePhase(game) {
   const st = game.state;
   const daySec = DAY_LEN * DAY_FRAC;
@@ -83,16 +113,13 @@ export function updatePhase(game) {
     st.phase = newPhase;
     game.app.classList.toggle("night", st.phase === "night");
     audio.play(st.phase === "night" ? "night.start" : "day.start");
-    if (st.phase === "night") { st.nightSpawned = false; onNightStart(game); }
+    if (st.phase === "night") { st.nightSpawned = true; onNightStart(game); }
     else { onDayStart(game); }
-  } else if (st.phase === "night" && !st.nightSpawned) {
-    st.nightSpawned = true;
-    spawnMonsters(game);
   }
 }
 
-export function onNightStart(game) { toast(game, "🌙 夜幕降临，当心怪物来袭！"); }
-export function onDayStart(game) { toast(game, "☀️ 天亮了，怪物撤退"); clearMonsters(game); }
+export function onNightStart(game) { toast(game, "🌙 夜幕降临，夜晚很安宁"); }
+export function onDayStart(game) { toast(game, "☀️ 天亮了"); }
 
 // ===================== 怪物 =====================
 // 刷新表（夜晚编号 = day）：0=thief 1=bandit
@@ -212,8 +239,10 @@ export function onDayEnd(game) {
     toast(game, "🍽 " + ateFood + " 个单位吃了 " + parts.join("、") + " 充饥");
     audio.play("eat");
   }
-  if (starved > 0) { toast(game, "💀 " + starved + " 个单位没有食物，饿死了"); audio.play("starve"); }
+  if (starved > 0) { toast(game, "🥾 " + starved + " 个牧民饿跑了（没有食物）"); audio.play("starve"); }
   else if (ateFood === 0) toast(game, "🌅 第 " + st.day + " 天结束，牧场平安度过了");
+  // 精神系统（§4.6 饥饿耦合）：今日有饿跑 → 全体工人精神受挫
+  dayEndSpirit(game, starved);
   // 是否全员阵亡（无牧民则游戏结束）
   if (popCount(game) === 0) { endGame(game); return; }
   st.day++;
@@ -241,7 +270,7 @@ function randCowBreed() {
 }
 
 export function buyPack(game, pack) {
-  if (game.state.gold < pack.price) { audio.play("ui.error"); toast(game, "金币不足，需要 ¥" + pack.price); return; }
+  if (game.state.gold < pack.price) { audio.play("ui.error"); toast(game, MONEY_NAME + "不足，需要 " + TICKET + pack.price); return; }
   game.state.gold -= pack.price;
   const cardsArr = [];
   if (pack.pool) {
@@ -266,6 +295,7 @@ export function buyPack(game, pack) {
   render(game); updateHUD(game); saveGame(game);
   audio.play("ui.open");
   toast(game, "已购买「" + pack.name + "」");
+  if (game.tutorial) game.tutorial.notify("buy", pack);
 }
 
 // ===================== 任务 =====================
@@ -278,7 +308,7 @@ export function checkTasks(game) {
       st.gold += t.rew;
       st.stats.gold = st.gold;
       audio.play("ui.task");
-      toast(game, "✅ 任务完成：「" + t.name + "」 +¥" + t.rew);
+      toast(game, "✅ 任务完成：「" + t.name + "」 +" + TICKET + t.rew);
     }
   });
 }
@@ -289,7 +319,7 @@ export function sellCards(game, d) {
   const remain = [];
   d.moving.forEach(c => {
     const price = META[c.type] ? (META[c.type].sale || 0) : 0;
-    if (price > 0) { st.gold += price; st.stats.gold = st.gold; toast(game, "售出「" + META[c.type].label + "」 +¥" + price); }
+    if (price > 0) { st.gold += price; st.stats.gold = st.gold; toast(game, "售出「" + META[c.type].label + "」 +" + TICKET + price); }
     else { remain.push(c); }
   });
   detach(game, d.moving, d.pile);
@@ -319,11 +349,19 @@ export function feedUnit(game, d, target) {
 }
 
 // ===================== 存档 =====================
+// 每目的地独立存档 + 全局 Meta 槽（护照章 / 解锁）
+// destId 有值时存到 SAVE_DEST_PREFIX+destId，否则回退到旧 SAVE_KEY（兼容）
+function saveKeyFor(game) {
+  return game.state.destId ? SAVE_DEST_PREFIX + game.state.destId : SAVE_KEY;
+}
+
 export function saveGame(game) {
+  // 教程期间不写档：沙盘改动（金币/买包）只练手，不影响玩家真实存档
+  if (game.state.tutorialActive) return;
   // 失败后不再写档：gameOver 状态下任何保存（含 beforeunload）都改为删档，
   // 保证刷新即开新局，而不是恢复失败前的旧状态
   if (game.state.gameOver) {
-    try { localStorage.removeItem(SAVE_KEY); } catch (e) { }
+    try { localStorage.removeItem(saveKeyFor(game)); } catch (e) { }
     return;
   }
   try {
@@ -331,12 +369,14 @@ export function saveGame(game) {
     const data = {
       day: st.day, timeLeft: st.timeLeft, phase: st.phase, gold: st.gold,
       seenCards: st.seenCards, cardGets: st.cardGets, collection: st.collection, tasksDone: st.tasksDone, lastSave: Date.now(),
+      destId: st.destId, landmarkBuilt: st.landmarkBuilt,
       piles: st.piles.map(p => ({
         x: p.x, y: p.y, isPack: p.isPack,
         cards: p.cards.map(c => {
           const o = { type: c.type };
           if (c.hp != null) o.hp = c.hp;
           if (c.fed != null) o.fed = c.fed;
+          if (c.spirit != null) o.spirit = c.spirit;   // 精神系统（§4.6）
           if (c.charges != null) o.charges = c.charges;
           if (c.atkBonus) o.atkBonus = c.atkBonus;
           if (c.hpBonus) o.hpBonus = c.hpBonus;
@@ -344,7 +384,7 @@ export function saveGame(game) {
         })
       }))
     };
-    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    localStorage.setItem(saveKeyFor(game), JSON.stringify(data));
   } catch (e) { }
 }
 
@@ -363,11 +403,14 @@ export function loadGame(game) {
     st.cardGets = data.cardGets || {};
     st.collection = data.collection || {};
     st.tasksDone = data.tasksDone || {};
+    st.destId = data.destId || null;
+    st.landmarkBuilt = data.landmarkBuilt || false;
     (data.piles || []).forEach(sp => {
       const cards = (sp.cards || []).map(sc => {
         const c = mk(game, sc.type);
         if (sc.hp != null) c.hp = sc.hp;
         if (sc.fed != null) c.fed = sc.fed;
+        if (sc.spirit != null) c.spirit = sc.spirit;   // 精神系统（§4.6）
         if (sc.charges != null) {
           // 旧档迁移兜底：META 配置更新后（如 charges 1→5），
           // 若存档值 ≤ 1 视为旧默认值，重置为当前 META 配置；
@@ -386,11 +429,79 @@ export function loadGame(game) {
     // 离线收益（仅在有房屋且离线较久时）
     const elapsed = Math.max(0, (Date.now() - (data.lastSave || Date.now())) / 1000);
     if (elapsed > 60 && countType(game, "house") > 0) {
-      const off = Math.floor(elapsed / 30); // 每30秒 ¥3
+      const off = Math.floor(elapsed / 30); // 每30秒 💰3
       if (off > 0) { st.gold += off * 3; showOffline(game, off * 3, elapsed); }
     }
     return true;
   } catch (e) { return false; }
+}
+
+// 从指定目的地的独立存档槽加载
+export function loadDestGame(game, destId) {
+  try {
+    const raw = localStorage.getItem(SAVE_DEST_PREFIX + destId);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    const st = game.state;
+    st.piles = [];
+    st.nextId = 1;
+    st.day = data.day || 1;
+    st.timeLeft = data.timeLeft || DAY_LEN;
+    st.gold = data.gold || 0;
+    st.seenCards = data.seenCards || {};
+    st.cardGets = data.cardGets || {};
+    st.collection = data.collection || {};
+    st.tasksDone = data.tasksDone || {};
+    st.destId = data.destId || destId;
+    st.landmarkBuilt = data.landmarkBuilt || false;
+    (data.piles || []).forEach(sp => {
+      const cards = (sp.cards || []).map(sc => {
+        const c = mk(game, sc.type);
+        if (sc.hp != null) c.hp = sc.hp;
+        if (sc.fed != null) c.fed = sc.fed;
+        if (sc.spirit != null) c.spirit = sc.spirit;   // 精神系统（§4.6）
+        if (sc.charges != null) c.charges = sc.charges <= 1 ? (META[sc.type] && META[sc.type].charges || sc.charges) : sc.charges;
+        if (sc.atkBonus) c.atkBonus = sc.atkBonus;
+        if (sc.hpBonus) c.hpBonus = sc.hpBonus;
+        return c;
+      });
+      const p = makePile(game, sp.x, sp.y, cards);
+      p.isPack = sp.isPack;
+    });
+    st.packOpened = !st.piles.some(p => p.isPack);
+    return true;
+  } catch (e) { return false; }
+}
+
+// 删除指定目的地的存档
+export function deleteDestSave(destId) {
+  try { localStorage.removeItem(SAVE_DEST_PREFIX + destId); } catch (e) { }
+}
+
+// ===================== 全局 Meta（护照章 / 解锁） =====================
+export function loadMeta() {
+  try {
+    const raw = localStorage.getItem(META_KEY);
+    if (!raw) return { unlocked: ["grassland"], stamps: {}, lastDest: null };
+    return JSON.parse(raw);
+  } catch (e) { return { unlocked: ["grassland"], stamps: {}, lastDest: null }; }
+}
+
+export function saveMeta(meta) {
+  try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (e) { }
+}
+
+// 标记目的地达成（建好地标）：盖章 + 解锁下一档
+export function stampDest(destId) {
+  const meta = loadMeta();
+  meta.stamps[destId] = true;
+  const idx = DESTINATIONS.findIndex(d => d.id === destId);
+  if (idx >= 0 && idx + 1 < DESTINATIONS.length) {
+    const next = DESTINATIONS[idx + 1];
+    if (!meta.unlocked.includes(next.id)) meta.unlocked.push(next.id);
+  }
+  saveMeta(meta);
+  return meta;
 }
 
 export function showOffline(game, amount, sec) {
@@ -398,7 +509,7 @@ export function showOffline(game, amount, sec) {
   ov.className = "overlay";
   ov.innerHTML = '<div class="modal"><h2>🌙 离线收益</h2>' +
     '<p>你离开了 ' + Math.floor(sec / 60) + ' 分 ' + Math.floor(sec % 60) + ' 秒，牧场帮你赚到了：</p>' +
-    '<p style="font-size:22px;font-weight:800;color:#c0392b;text-align:center;">+¥' + amount + '</p>' +
+    '<p style="font-size:22px;font-weight:800;color:#c0392b;text-align:center;">+' + TICKET + amount + '</p>' +
     '<button class="close" id="offClose">收下</button></div>';
   game.board.appendChild(ov);
   document.getElementById("offClose").onclick = function () { if (ov.parentNode) ov.parentNode.removeChild(ov); };

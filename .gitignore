@@ -5,4 +5,5 @@ dist/
 .workbuddy/
 resource/
 vite.config.js.timestamp-*.mjs
-resource/
+.tutbuild/
+

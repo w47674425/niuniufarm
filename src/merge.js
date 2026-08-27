@@ -1,16 +1,18 @@
 // 堆行为规则层（纯逻辑，不碰 DOM）：配方匹配 / 堆行为解释 / 执行 / 战斗
 // 原「合并 / 产出 / 喂草」规则已由数据驱动的 RECIPES 配方表取代（对齐资料库准绳版）
 
-import { META, RECIPES, COMBAT_SEC, foodCapOf, COW_BREEDS } from './config.js';
+import { META, RECIPES, COMBAT_SEC, foodCapOf, COW_BREEDS, TICKET, D_WORK, NIGHT_DRAIN_MULT } from './config.js';
 import { mk, countType, removeCardObj, markSeen, maxStack, spawnNear } from './state.js';
+import { moraleMult, drainSpirit } from './spirit.js';
 import * as audio from './audio.js';
 
 export function isFood(type) { return !!(META[type] && META[type].cat === "food"); }
 export function isSellable(type) { return !!(META[type] && META[type].sale > 0); }
 
-// 牛家族：配方 in:{cow:1} 匹配任意品种（yak/bison/buffalo/ox 都算 cow）
+// 牛家族：配方 in:{cow:1} 匹配任意品种（变异牛 + 主题牛和牛/冰原牛 都算 cow）
 const COW_ALIAS = {};
 COW_BREEDS.forEach(t => { COW_ALIAS[t] = "cow"; });
+Object.keys(META).forEach(t => { if (META[t].cowKind === "cow") COW_ALIAS[t] = "cow"; });
 
 // ===================== pileAction：解释每堆的行为 =====================
 // 返回 {type, sec, label, recipe} 或 null
@@ -24,7 +26,7 @@ export function pileAction(game, p) {
   if (monster && (hasHerder || hasDog)) return { type: "fight", sec: COMBAT_SEC, label: "⚔️ 战斗中", recipe: null };
   // 配方匹配
   const r = matchRecipe(game, p);
-  if (r) return { type: r.id, sec: r.sec, label: r.label, recipe: r };
+  if (r) return { type: r.id, sec: r.sec * moraleMult(game), label: r.label, recipe: r };
   return null;
 }
 
@@ -184,6 +186,15 @@ function applyRecipe(game, p, r) {
   else if (r.kind === "breed") { toast(game, "👶 一名新牧民出生！"); }
   else if (r.kind === "train") { toast(game, "🐕 牧羊犬训练完成！"); }
   else if (r.kind === "slaughter") { toast(game, "🔪 宰杀完成，获得生肉"); }
+  // 精神系统（§4.6）：主动打工损耗。配方完成 → 参与工人 -dWork（夜班 ×2）
+  // 繁殖（breed）是被动自动发生、非"主动打工"，不扣精神
+  if (r.kind !== "breed") {
+    const worker = p.cards.find(c => c.type === "herder");
+    if (worker) {
+      const mult = game.state.phase === "night" ? NIGHT_DRAIN_MULT : 1;
+      drainSpirit(game, worker, D_WORK * mult);
+    }
+  }
 }
 
 // 战斗一步：防御者攻击怪物，怪物反击
@@ -218,7 +229,7 @@ function killMonster(game, p, monster) {
   game.state.stats.kills++;
   removeCardObj(game, monster);
   audio.play("combat.kill");
-  toast(game, "🗡 击败" + META[monster.type].label + "！+¥" + drop);
+  toast(game, "🗡 击败" + META[monster.type].label + "！+" + TICKET + drop);
 }
 
 // 为避免循环引用，toast 由外层注入
